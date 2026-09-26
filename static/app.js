@@ -485,6 +485,12 @@ document.addEventListener('DOMContentLoaded', () => {
     );
     resStatusVal.textContent = overall;
 
+    if (overall === 'NOT_YET_VALIDATED' || overall === 'VALIDATION_FAILED') {
+      showError(data.message || 'Signal container format requires approved parameter specification. For automated end-to-end DSP analysis, canonical I/Q JSON {"i": [...], "q": [...]} is recommended.');
+    } else {
+      hideAlert();
+    }
+
     // Stage Badges (M1 to M10)
     const st = data.module_statuses || {};
     updateBadge(badges.m1, st.module1);

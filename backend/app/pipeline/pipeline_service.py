@@ -121,20 +121,49 @@ class PipelineOrchestrator:
         # ======================================================================
         # MODULE 2: Non-Destructive Observation Features (Locked)
         # ======================================================================
-        m2_res = observe_from_module1(canonical_iq, val_res)
-        m2_output = m2_res.to_dict()
-        module_statuses["module2"] = "PASS" if m2_res.status == "VALID" else "PARTIAL"
+        try:
+            m2_res = observe_from_module1(canonical_iq, val_res)
+            m2_output = m2_res.to_dict()
+            module_statuses["module2"] = "PASS" if m2_res.status == "VALID" else "PARTIAL"
+        except Exception as err:
+            pipeline_warnings.append(f"MODULE_2_OBSERVATION_ERROR: {str(err)}")
+            m2_output = {"status": "PARTIAL_ERROR", "error": str(err), "observation": {}}
+            module_statuses["module2"] = "PARTIAL"
 
         # ======================================================================
         # MODULE 3: Automatic Modulation Classification (Locked)
         # ======================================================================
-        m3_res = classify_amc(canonical_iq, module2_observation=m2_res.observation)
-        m3_output = m3_res
+        try:
+            obs_dict = m2_output.get("observation") if isinstance(m2_output, dict) else getattr(m2_res, "observation", None)
+            m3_res = classify_amc(canonical_iq, module2_observation=obs_dict)
+            m3_output = m3_res
+        except Exception as err:
+            pipeline_warnings.append(f"MODULE_3_AMC_ERROR: {str(err)}")
+            m3_output = {"status": "PARTIAL_ERROR", "error": str(err), "engines": {}}
 
-        # Resolve active modulation: caller override > AMC RF prediction > AMC CNN prediction
-        rf_pred = m3_res.get("engines", {}).get("engine_a_rf", {}).get("predicted_class")
-        cnn_pred = m3_res.get("engines", {}).get("engine_b_cnn", {}).get("predicted_class")
+        # Resolve active modulation: caller override > AMC RF prediction > AMC CNN prediction > physics inference
+        rf_pred = m3_output.get("engines", {}).get("engine_a_rf", {}).get("predicted_class")
+        cnn_pred = m3_output.get("engines", {}).get("engine_b_cnn", {}).get("predicted_class")
         active_mod = override_modulation or modulation or rf_pred or cnn_pred
+
+        # Blind physical decision tree fallback if no weights/override present (Swami & Sadler 2000)
+        if not active_mod:
+            try:
+                obs_feats = m2_output.get("features", {}) if isinstance(m2_output, dict) else {}
+                c20 = abs(obs_feats.get("c20", 0.0))
+                c21 = max(1e-12, abs(obs_feats.get("c21", 1.0)))
+                c42 = obs_feats.get("c42", -1.0)
+                circ = c20 / c21
+                if circ > 0.65:
+                    active_mod = "BPSK"
+                elif c42 / (c21**2) < -1.25:
+                    active_mod = "QAM16"
+                else:
+                    active_mod = "QPSK" # Default robust M-PSK hypothesis
+                pipeline_warnings.append(f"BLIND_STATISTICAL_MODULATION_INFERRED_{active_mod}")
+            except Exception:
+                active_mod = "QPSK"
+
         m3_output["active_modulation_selected"] = active_mod
 
         if rf_pred or cnn_pred:
@@ -147,107 +176,154 @@ class PipelineOrchestrator:
         # ======================================================================
         # MODULE 4: Signal Parameter Estimation (Locked)
         # ======================================================================
-        m4_res = default_parameter_service.estimate_parameters(
-            canonical_iq=canonical_iq,
-            modulation=active_mod,
-            metadata=metadata,
-            sample_rate=sample_rate,
-            center_frequency=center_frequency
-        )
-        m4_output = m4_res
-        module_statuses["module4"] = "PASS" if m4_res.get("status") == "SUCCESS" else "PARTIAL"
+        try:
+            m4_res = default_parameter_service.estimate_parameters(
+                canonical_iq=canonical_iq,
+                modulation=active_mod,
+                metadata=metadata,
+                sample_rate=sample_rate,
+                center_frequency=center_frequency
+            )
+            m4_output = m4_res
+            module_statuses["module4"] = "PASS" if m4_res.get("status") == "SUCCESS" else "PARTIAL"
+        except Exception as err:
+            pipeline_warnings.append(f"MODULE_4_PARAMETER_ERROR: {str(err)}")
+            m4_output = {"status": "PARTIAL_ERROR", "symbol_rate": None, "samples_per_symbol": 4.0, "cfo": 0.0}
+            module_statuses["module4"] = "PARTIAL"
 
-        active_sps = samples_per_symbol or m4_res.get("samples_per_symbol")
-        if (active_sps is None or active_sps <= 0) and m4_res.get("symbol_rate_normalized") and m4_res["symbol_rate_normalized"] > 0:
-            active_sps = float(1.0 / m4_res["symbol_rate_normalized"])
-        active_cfo = cfo if cfo is not None else (m4_res.get("cfo") if m4_res.get("cfo") is not None else m4_res.get("cfo_normalized", 0.0))
+        active_sps = samples_per_symbol or m4_output.get("samples_per_symbol")
+        if (active_sps is None or active_sps <= 0) and m4_output.get("symbol_rate_normalized") and m4_output["symbol_rate_normalized"] > 0:
+            active_sps = float(1.0 / m4_output["symbol_rate_normalized"])
+        if active_sps is None or active_sps <= 0:
+            active_sps = 4.0  # Standard 4x oversampled baseband fallback
+
+        active_cfo = cfo if cfo is not None else (m4_output.get("cfo") if m4_output.get("cfo") is not None else m4_output.get("cfo_normalized", 0.0))
+        if active_cfo is None:
+            active_cfo = 0.0
 
         # ======================================================================
         # MODULE 5: Synchronization & Digital Symbol/Bit Recovery (Locked)
         # ======================================================================
-        m5_res = default_recovery_service.recover_signal(
-            canonical_iq=canonical_iq,
-            modulation=active_mod,
-            module4_parameters=m4_res,
-            sample_rate=sample_rate,
-            samples_per_symbol=active_sps,
-            cfo=active_cfo
-        )
-        m5_output = m5_res
+        try:
+            m5_res = default_recovery_service.recover_signal(
+                canonical_iq=canonical_iq,
+                modulation=active_mod,
+                module4_parameters=m4_output,
+                sample_rate=sample_rate,
+                samples_per_symbol=active_sps,
+                cfo=active_cfo
+            )
+            m5_output = m5_res
 
-        if m5_res.get("status") == "SUCCESS":
-            module_statuses["module5"] = "PASS"
-        elif m5_res.get("status") == "INSUFFICIENT_PARAMETERS":
-            module_statuses["module5"] = "PARTIAL (Insufficient Parameters)"
-        else:
-            module_statuses["module5"] = "FAILED"
+            if m5_res.get("status") == "SUCCESS":
+                module_statuses["module5"] = "PASS"
+            elif m5_res.get("status") == "INSUFFICIENT_PARAMETERS":
+                module_statuses["module5"] = "PARTIAL (Insufficient Parameters)"
+            else:
+                module_statuses["module5"] = "FAILED"
+        except Exception as err:
+            pipeline_warnings.append(f"MODULE_5_RECOVERY_ERROR: {str(err)}")
+            m5_output = {"status": "PARTIAL_ERROR", "symbols": [], "bits": [], "num_symbols": 0, "num_bits": 0}
+            module_statuses["module5"] = "PARTIAL"
 
         # Adapt symbol and bit outputs for downstream modules
-        recovered_syms = np.array(m5_res.get("symbols", []), dtype=np.complex128) if m5_res.get("symbols") else None
-        m5_hard_bits = np.array(m5_res.get("bits", []), dtype=np.uint8) if m5_res.get("bits") else None
+        recovered_syms = np.array(m5_output.get("symbols", []), dtype=np.complex128) if m5_output.get("symbols") else None
+        m5_hard_bits = np.array(m5_output.get("bits", []), dtype=np.uint8) if m5_output.get("bits") else None
+
+        # Slicer fallback: if synchronization returned no bits, derive direct sign-slice fallback
+        if (m5_hard_bits is None or len(m5_hard_bits) == 0) and len(canonical_iq) > 0:
+            step = max(1, int(round(active_sps)))
+            down = canonical_iq[::step]
+            fb_bits: List[int] = []
+            for s in down:
+                fb_bits.append(1 if s.real > 0 else 0)
+                if active_mod in ["QPSK", "QAM16", "QAM64", "8PSK"]:
+                    fb_bits.append(1 if s.imag > 0 else 0)
+            m5_hard_bits = np.array(fb_bits, dtype=np.uint8)
 
         # ======================================================================
         # MODULE 6: Engineering Quality & SNR Estimation (Locked)
         # ======================================================================
-        m6_res = default_snr_service.estimate_snr(
-            canonical_iq=canonical_iq,
-            modulation=active_mod,
-            module4_parameters=m4_res,
-            module5_recovery=m5_res
-        )
-        m6_output = m6_res
-        if m6_res.get("status") == "SUCCESS":
-            module_statuses["module6"] = "PASS"
-        elif m6_res.get("status") == "INSUFFICIENT_PARAMETERS":
-            module_statuses["module6"] = "PARTIAL (Insufficient Parameters)"
-        else:
-            module_statuses["module6"] = "PARTIAL (Uncalibrated Estimator)"
+        try:
+            m6_res = default_snr_service.estimate_snr(
+                canonical_iq=canonical_iq,
+                modulation=active_mod,
+                module4_parameters=m4_output,
+                module5_recovery=m5_output
+            )
+            m6_output = m6_res
+            if m6_res.get("status") == "SUCCESS":
+                module_statuses["module6"] = "PASS"
+            elif m6_res.get("status") == "INSUFFICIENT_PARAMETERS":
+                module_statuses["module6"] = "PARTIAL (Insufficient Parameters)"
+            else:
+                module_statuses["module6"] = "PARTIAL (Uncalibrated Estimator)"
+        except Exception as err:
+            pipeline_warnings.append(f"MODULE_6_SNR_ERROR: {str(err)}")
+            m6_output = {"status": "PARTIAL_ERROR", "snr_db": None}
+            module_statuses["module6"] = "PARTIAL"
+
+        # Resolve noise parameter N0
+        active_n0 = n0
+        if active_n0 is None and m6_output.get("snr_db") is not None:
+            snr_val = float(m6_output["snr_db"])
+            active_n0 = float(10.0 ** (-snr_val / 10.0))
 
         # ======================================================================
         # MODULE 7: Soft-Bit & LLR Generation (Locked)
         # ======================================================================
-        m7_res = default_soft_bits_service.generate_soft_bits(
-            module5_recovery=m5_res,
-            module6_snr=m6_res,
-            symbol_samples=recovered_syms,
-            reference_hard_bits=m5_hard_bits,
-            modulation=active_mod,
-            n0=n0
-        )
-        m7_output = m7_res
+        try:
+            m7_res = default_soft_bits_service.generate_soft_bits(
+                module5_recovery=m5_output,
+                module6_snr=m6_output,
+                symbol_samples=recovered_syms,
+                reference_hard_bits=m5_hard_bits,
+                modulation=active_mod,
+                n0=active_n0
+            )
+            m7_output = m7_res
 
-        if m7_res.get("status") == "SUCCESS":
-            module_statuses["module7"] = "PASS"
-        elif m7_res.get("status") == "NOISE_PARAMETER_UNAVAILABLE":
-            module_statuses["module7"] = "PARTIAL (Noise Parameter Unavailable - LLR Not Fabricated)"
-        elif m7_res.get("status") == "MISSING_MODULATION":
-            module_statuses["module7"] = "PARTIAL (Missing Modulation)"
-        else:
+            if m7_res.get("status") == "SUCCESS":
+                module_statuses["module7"] = "PASS"
+            elif m7_res.get("status") == "NOISE_PARAMETER_UNAVAILABLE":
+                module_statuses["module7"] = "PARTIAL (Noise Parameter Unavailable - LLR Not Fabricated)"
+            elif m7_res.get("status") == "MISSING_MODULATION":
+                module_statuses["module7"] = "PARTIAL (Missing Modulation)"
+            else:
+                module_statuses["module7"] = "PARTIAL"
+        except Exception as err:
+            pipeline_warnings.append(f"MODULE_7_SOFT_BITS_ERROR: {str(err)}")
+            m7_output = {"status": "PARTIAL_ERROR", "soft_bits": None, "hard_bits": m5_hard_bits.tolist() if m5_hard_bits is not None else []}
             module_statuses["module7"] = "PARTIAL"
 
         # Adapt bitstream for downstream modules
-        m7_soft_bits = m7_res.get("soft_bits")
-        m7_hard_bits = m7_res.get("hard_bits")
+        m7_soft_bits = m7_output.get("soft_bits")
+        m7_hard_bits = m7_output.get("hard_bits")
         active_hard_bits = m7_hard_bits if (m7_hard_bits is not None and len(m7_hard_bits) > 0) else m5_hard_bits
 
         # ======================================================================
         # MODULE 8: Blind FEC Identification & Decoding (Locked)
         # ======================================================================
-        m8_res = default_fec_service.process_fec(
-            module7_result=m7_res,
-            soft_bits=m7_soft_bits,
-            hard_bits=active_hard_bits,
-            metric_type=m7_res.get("metric_type")
-        )
-        m8_output = m8_res
+        try:
+            m8_res = default_fec_service.process_fec(
+                module7_result=m7_output,
+                soft_bits=m7_soft_bits,
+                hard_bits=active_hard_bits,
+                metric_type=m7_output.get("metric_type")
+            )
+            m8_output = m8_res
 
-        if m8_res.get("status") in ["SUCCESS", "NO_FEC_DETECTED"]:
-            module_statuses["module8"] = "PASS"
-        else:
+            if m8_res.get("status") in ["SUCCESS", "NO_FEC_DETECTED"]:
+                module_statuses["module8"] = "PASS"
+            else:
+                module_statuses["module8"] = "PARTIAL"
+        except Exception as err:
+            pipeline_warnings.append(f"MODULE_8_FEC_ERROR: {str(err)}")
+            m8_output = {"status": "PARTIAL_ERROR", "detected_fec_family": None}
             module_statuses["module8"] = "PARTIAL"
 
         # Extract bits for structural analysis (M8 info bits or raw hard bits)
-        m8_recovered_bits = m8_res.get("recovered_information_bits")
+        m8_recovered_bits = m8_output.get("recovered_information_bits")
         if m8_recovered_bits is not None and len(m8_recovered_bits) > 0:
             structural_bits = m8_recovered_bits
         elif active_hard_bits is not None and len(active_hard_bits) > 0:
@@ -258,43 +334,58 @@ class PipelineOrchestrator:
         # ======================================================================
         # MODULE 9: Bitstream Structure, Frame Detection & Evidence (Locked)
         # ======================================================================
-        p_bounds = (candidate_period_min or 100, candidate_period_max or 180)
-        m9_res = default_structure_service.analyze_structure(
-            module8_result=m8_res,
-            bits=structural_bits if len(structural_bits) > 0 else None,
-            preamble=preamble,
-            candidate_periods=p_bounds,
-            max_gf2_error=max_gf2_error
-        )
-        m9_output = m9_res
+        try:
+            p_bounds = (candidate_period_min or 100, candidate_period_max or 180)
+            m9_res = default_structure_service.analyze_structure(
+                module8_result=m8_output,
+                bits=structural_bits if len(structural_bits) > 0 else None,
+                preamble=preamble,
+                candidate_periods=p_bounds,
+                max_gf2_error=max_gf2_error
+            )
+            m9_output = m9_res
 
-        if m9_res.get("status") == "SUCCESS":
-            module_statuses["module9"] = "PASS"
-        elif m9_res.get("status") == "ERROR_NO_INPUT_BITS":
-            module_statuses["module9"] = "NOT_EXECUTED (No Input Bits)"
-        else:
+            if m9_res.get("status") == "SUCCESS":
+                module_statuses["module9"] = "PASS"
+            elif m9_res.get("status") == "ERROR_NO_INPUT_BITS":
+                module_statuses["module9"] = "NOT_EXECUTED (No Input Bits)"
+            else:
+                module_statuses["module9"] = "PARTIAL"
+        except Exception as err:
+            pipeline_warnings.append(f"MODULE_9_STRUCTURE_ERROR: {str(err)}")
+            m9_output = {"status": "PARTIAL_ERROR", "frame_period": None}
             module_statuses["module9"] = "PARTIAL"
 
         # ======================================================================
         # MODULE 10: Advanced FEC, CRC & Interleaver Analysis (Locked)
         # ======================================================================
-        m10_res = default_fec_crc_service.analyze_fec_crc(
-            module9_result=m9_res,
-            bits=structural_bits if len(structural_bits) > 0 else None,
-            frame_period=m9_res.get("frame_period"),
-            soft_bits=m7_soft_bits,
-            metric_type=m7_res.get("metric_type"),
-            modulation=active_mod,
-            candidate_crc_polynomials=candidate_crc_polynomials,
-            candidate_interleaver_widths=candidate_interleaver_widths
-        )
-        m10_output = m10_res
+        try:
+            m10_res = default_fec_crc_service.analyze_fec_crc(
+                module9_result=m9_output,
+                bits=structural_bits if len(structural_bits) > 0 else None,
+                frame_period=m9_output.get("frame_period"),
+                soft_bits=m7_soft_bits,
+                metric_type=m7_output.get("metric_type"),
+                modulation=active_mod,
+                candidate_crc_polynomials=candidate_crc_polynomials,
+                candidate_interleaver_widths=candidate_interleaver_widths
+            )
+            m10_output = m10_res
 
-        if m10_res.get("status") == "SUCCESS":
-            module_statuses["module10"] = "PASS"
-        elif m10_res.get("status") == "ERROR_NO_INPUT":
-            module_statuses["module10"] = "NOT_EXECUTED (No Input Bits)"
-        else:
+            if m10_res.get("status") == "SUCCESS":
+                module_statuses["module10"] = "PASS"
+            elif m10_res.get("status") == "ERROR_NO_INPUT":
+                module_statuses["module10"] = "NOT_EXECUTED (No Input Bits)"
+            else:
+                module_statuses["module10"] = "PARTIAL"
+        except Exception as err:
+            pipeline_warnings.append(f"MODULE_10_FEC_CRC_ERROR: {str(err)}")
+            m10_output = {
+                "status": "PARTIAL_ERROR",
+                "interleaver": {"identity_baseline": {"width": 1}, "candidate_evaluations": {}},
+                "fec": {"top_candidate": None},
+                "crc": {"candidate": None}
+            }
             module_statuses["module10"] = "PARTIAL"
 
         # Overall pipeline execution status
