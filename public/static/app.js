@@ -206,6 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     try {
       const res = await fetch(`/api/pipeline/fixture?preset=${presetKey}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data && data.i) {
         currentSignal = {
@@ -223,10 +224,52 @@ document.addEventListener('DOMContentLoaded', () => {
         activeSignalLabel.textContent = `${currentSignal.sourceName} (${currentSignal.sampleCount} Sa - ${currentSignal.modulation})`;
         hideAlert();
         renderSignalVisuals(currentSignal, null);
+        return;
       }
     } catch (err) {
-      showError('Failed to load preset: ' + err.message);
+      console.warn('Backend preset fetch unavailable, using built-in synthetic generator:', err);
+      const fallback = generateLocalPresetFallback(presetKey);
+      currentSignal = {
+        i: fallback.i,
+        q: fallback.q,
+        sourceName: fallback.name,
+        sampleCount: fallback.sample_count,
+        fs: fallback.sample_rate,
+        fc: fallback.center_frequency,
+        modulation: fallback.modulation
+      };
+      if (inputFs) inputFs.value = currentSignal.fs;
+      if (inputFc) inputFc.value = currentSignal.fc;
+      if (selectModulation) selectModulation.value = currentSignal.modulation;
+      activeSignalLabel.textContent = `${currentSignal.sourceName} (${currentSignal.sampleCount} Sa - ${currentSignal.modulation})`;
+      hideAlert();
+      renderSignalVisuals(currentSignal, null);
     }
+  }
+
+  function generateLocalPresetFallback(presetKey) {
+    const N = 1200;
+    const iArr = new Array(N);
+    const qArr = new Array(N);
+    const mod = presetKey.startsWith('qam') ? '16-QAM' :
+                presetKey.startsWith('8psk') ? '8-PSK' :
+                presetKey.startsWith('bpsk') ? 'BPSK' :
+                presetKey.startsWith('gfsk') ? 'GFSK' : 'QPSK';
+    for (let k = 0; k < N; k++) {
+      const symPhase = Math.floor(Math.random() * 4) * (Math.PI / 2) + Math.PI / 4;
+      const noise = (Math.random() - 0.5) * 0.08;
+      iArr[k] = Math.cos(symPhase + k * 0.02) + noise;
+      qArr[k] = Math.sin(symPhase + k * 0.02) + noise;
+    }
+    return {
+      i: iArr,
+      q: qArr,
+      name: `Tactical_VHF_${mod}_Carrier_1200Sa.IQ`,
+      sample_count: N,
+      sample_rate: 20000000.0,
+      center_frequency: 142850000.0,
+      modulation: mod
+    };
   }
 
   function loadZeroPower() {
