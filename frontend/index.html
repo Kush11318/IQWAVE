@@ -368,82 +368,94 @@
     <!-- ========================================================================
          STEP 3: DETAILED ENGINEERING RESULTS DASHBOARD
          ======================================================================== -->
-    <section class="dashboard-grid">
-      <!-- Card A: Executive Summary -->
-      <div class="result-card">
-        <div class="result-card-header">
-          <span>EXECUTIVE CLASSIFICATION SUMMARY</span>
-          <span id="resExecMod" class="status-badge cyan" style="padding:2px 7px;">UNKNOWN</span>
+    <section class="results-dashboard-card">
+      <div class="control-card-header" style="border-bottom: 1px solid var(--border-card); padding-bottom: 12px;">
+        <div class="step-indicator">
+          <span class="step-number">3</span>
+          <span class="step-title">Telemetry &amp; Protocol Recovery Breakdown</span>
         </div>
-        <div class="metric-row"><span class="metric-key">Pipeline Status:</span><span class="metric-val" id="resStatusVal">Awaiting Run</span></div>
-        <div class="metric-row"><span class="metric-key">Estimated SNR:</span><span class="metric-val" id="resSnrVal">—</span></div>
-        <div class="metric-row"><span class="metric-key">Baud Rate (Rs):</span><span class="metric-val" id="resBaudVal">—</span></div>
-        <div class="metric-row"><span class="metric-key">Top FEC Code:</span><span class="metric-val" id="resFecVal">—</span></div>
-        <div class="metric-row"><span class="metric-key">Detected CRC:</span><span class="metric-val" id="resCrcVal">—</span></div>
-        <div class="metric-row"><span class="metric-key">Interleaver Width:</span><span class="metric-val" id="resInterleaverVal">—</span></div>
+        <div class="header-status-strip">
+          <span class="status-badge green">✓ 6 Analysis Domains Synchronized</span>
+        </div>
       </div>
 
-      <!-- Card C: Modulation AMC -->
-      <div class="result-card">
-        <div class="result-card-header">
-          <span>AUTOMATIC MODULATION RECOGNITION (AMC)</span>
-          <span class="status-badge green" style="padding:2px 7px;">69.00% Benchmark</span>
+      <div class="dashboard-grid">
+        <!-- Card A: Executive Summary -->
+        <div class="result-card card-accent-blue">
+          <div class="result-card-header">
+            <span>EXECUTIVE CLASSIFICATION SUMMARY</span>
+            <span id="resExecMod" class="status-badge cyan" style="padding:2px 7px;">UNKNOWN</span>
+          </div>
+          <div class="metric-row"><span class="metric-key">Pipeline Status:</span><span class="metric-val" id="resStatusVal">Awaiting Run</span></div>
+          <div class="metric-row"><span class="metric-key">Estimated SNR:</span><span class="metric-val" id="resSnrVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">Baud Rate (Rs):</span><span class="metric-val" id="resBaudVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">Top FEC Code:</span><span class="metric-val" id="resFecVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">Detected CRC:</span><span class="metric-val" id="resCrcVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">Interleaver Width:</span><span class="metric-val" id="resInterleaverVal">—</span></div>
         </div>
-        <div class="metric-row"><span class="metric-key">RF Engine A (24 Features):</span><span class="metric-val" id="amcRfVal">—</span></div>
-        <div class="metric-row"><span class="metric-key">CNN Engine B (Raw IQ):</span><span class="metric-val" id="amcCnnVal">—</span></div>
-        <div class="metric-row"><span class="metric-key">Model Weights Status:</span><span class="metric-val" id="amcWeightsVal">HONEST REPORT</span></div>
-        <div class="metric-row"><span class="metric-key">Fusion Status:</span><span class="metric-val" style="color:var(--accent-amber);">NOT_YET_VALIDATED</span></div>
-        <div class="metric-row"><span class="metric-key">Calibrated Confidence:</span><span class="metric-val">NOT_YET_DEFINED</span></div>
-      </div>
 
-      <!-- Card D: Parameter Estimation -->
-      <div class="result-card">
-        <div class="result-card-header">
-          <span>CARRIER &amp; SYMBOL PARAMETERS</span>
-          <span class="status-badge cyan" style="padding:2px 7px;">Cyclic Ciblat</span>
+        <!-- Card C: Modulation AMC -->
+        <div class="result-card card-accent-mint">
+          <div class="result-card-header">
+            <span>AUTOMATIC MODULATION RECOGNITION (AMC)</span>
+            <span class="status-badge green" style="padding:2px 7px;">69.00% Benchmark</span>
+          </div>
+          <div class="metric-row"><span class="metric-key">RF Engine A (24 Features):</span><span class="metric-val" id="amcRfVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">CNN Engine B (Raw IQ):</span><span class="metric-val" id="amcCnnVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">Model Weights Status:</span><span class="metric-val" id="amcWeightsVal">HONEST REPORT</span></div>
+          <div class="metric-row"><span class="metric-key">Fusion Status:</span><span class="metric-val" style="color:var(--accent-amber);">NOT_YET_VALIDATED</span></div>
+          <div class="metric-row"><span class="metric-key">Calibrated Confidence:</span><span class="metric-val">NOT_YET_DEFINED</span></div>
         </div>
-        <div class="metric-row"><span class="metric-key">Symbol Rate:</span><span class="metric-val" id="paramRsVal">—</span></div>
-        <div class="metric-row"><span class="metric-key">Samples / Symbol (SPS):</span><span class="metric-val" id="paramSpsVal">—</span></div>
-        <div class="metric-row"><span class="metric-key">Carrier Offset (CFO):</span><span class="metric-val" id="paramCfoVal">—</span></div>
-        <div class="metric-row"><span class="metric-key">Occupied Bandwidth:</span><span class="metric-val" id="paramBwVal">—</span></div>
-        <div class="metric-row"><span class="metric-key">FSK Frequency Separation:</span><span class="metric-val" id="paramFskVal">N/A (PSK/QAM)</span></div>
-      </div>
 
-      <!-- Card E: Synchronization & Bitstream -->
-      <div class="result-card">
-        <div class="result-card-header">
-          <span>SYNCHRONIZED BITSTREAM DEMAPPING</span>
-          <span id="badgeBitCount" class="status-badge green" style="padding:2px 7px;">0 Bits</span>
+        <!-- Card D: Parameter Estimation -->
+        <div class="result-card card-accent-blue">
+          <div class="result-card-header">
+            <span>CARRIER &amp; SYMBOL PARAMETERS</span>
+            <span class="status-badge cyan" style="padding:2px 7px;">Cyclic Ciblat</span>
+          </div>
+          <div class="metric-row"><span class="metric-key">Symbol Rate:</span><span class="metric-val" id="paramRsVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">Samples / Symbol (SPS):</span><span class="metric-val" id="paramSpsVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">Carrier Offset (CFO):</span><span class="metric-val" id="paramCfoVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">Occupied Bandwidth:</span><span class="metric-val" id="paramBwVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">FSK Frequency Separation:</span><span class="metric-val" id="paramFskVal">N/A (PSK/QAM)</span></div>
         </div>
-        <div class="metric-row"><span class="metric-key">CFO Compensated:</span><span class="metric-val" id="recCfoVal">—</span></div>
-        <div class="metric-row"><span class="metric-key">Costas Phase Estimate:</span><span class="metric-val" id="recPhaseVal">—</span></div>
-        <div class="metric-row"><span class="metric-key">Gardner Timing Offset:</span><span class="metric-val" id="recTimingVal">—</span></div>
-        <div class="bitstream-container" id="demodBitStreamBox">// No demodulated bits available</div>
-      </div>
 
-      <!-- Card G: Soft Bits & Reliability -->
-      <div class="result-card">
-        <div class="result-card-header">
-          <span>SOFT-DECISION DEMAPPING &amp; LLR</span>
-          <span class="status-badge purple" style="padding:2px 7px;">Exact LLR</span>
+        <!-- Card E: Synchronization & Bitstream -->
+        <div class="result-card card-accent-mint">
+          <div class="result-card-header">
+            <span>SYNCHRONIZED BITSTREAM DEMAPPING</span>
+            <span id="badgeBitCount" class="status-badge green" style="padding:2px 7px;">0 Bits</span>
+          </div>
+          <div class="metric-row"><span class="metric-key">CFO Compensated:</span><span class="metric-val" id="recCfoVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">Costas Phase Estimate:</span><span class="metric-val" id="recPhaseVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">Gardner Timing Offset:</span><span class="metric-val" id="recTimingVal">—</span></div>
+          <div class="bitstream-container" id="demodBitStreamBox">// No demodulated bits available</div>
         </div>
-        <div class="metric-row"><span class="metric-key">Metric Type:</span><span class="metric-val" id="softMetricTypeVal">LLR (Exact Gaussian)</span></div>
-        <div class="metric-row"><span class="metric-key">Hard Decision Agreement:</span><span class="metric-val" id="softAgreementVal">—</span></div>
-        <div class="metric-row"><span class="metric-key">Noise Parameter N0:</span><span class="metric-val" id="softN0Val">—</span></div>
-        <div class="bitstream-container" id="softStreamBox">// Soft values awaiting execution</div>
-      </div>
 
-      <!-- Card I/J: Framing, GF(2) & CRC -->
-      <div class="result-card">
-        <div class="result-card-header">
-          <span>FRAME STRUCTURE &amp; CRC INTEGRITY</span>
-          <span class="status-badge green" style="padding:2px 7px;">GF(2) Algebra</span>
+        <!-- Card G: Soft Bits & Reliability -->
+        <div class="result-card card-accent-purple">
+          <div class="result-card-header">
+            <span>SOFT-DECISION DEMAPPING &amp; LLR</span>
+            <span class="status-badge purple" style="padding:2px 7px;">Exact LLR</span>
+          </div>
+          <div class="metric-row"><span class="metric-key">Metric Type:</span><span class="metric-val" id="softMetricTypeVal">LLR (Exact Gaussian)</span></div>
+          <div class="metric-row"><span class="metric-key">Hard Decision Agreement:</span><span class="metric-val" id="softAgreementVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">Noise Parameter N0:</span><span class="metric-val" id="softN0Val">—</span></div>
+          <div class="bitstream-container" id="softStreamBox">// Soft values awaiting execution</div>
         </div>
-        <div class="metric-row"><span class="metric-key">Frame Period P:</span><span class="metric-val" id="framingPeriodVal">—</span></div>
-        <div class="metric-row"><span class="metric-key">Frame Phase φ*:</span><span class="metric-val" id="framingPhaseVal">—</span></div>
-        <div class="metric-row"><span class="metric-key">GF(2) Parity Relations:</span><span class="metric-val" id="gf2RelationsVal">—</span></div>
-        <div class="metric-row"><span class="metric-key">CRC Candidate:</span><span class="metric-val" id="crcPolyVal">—</span></div>
-        <div class="metric-row"><span class="metric-key">CRC Acceptance Rate:</span><span class="metric-val" id="crcRateVal">—</span></div>
+
+        <!-- Card I/J: Framing, GF(2) & CRC -->
+        <div class="result-card card-accent-amber">
+          <div class="result-card-header">
+            <span>FRAME STRUCTURE &amp; CRC INTEGRITY</span>
+            <span class="status-badge green" style="padding:2px 7px;">GF(2) Algebra</span>
+          </div>
+          <div class="metric-row"><span class="metric-key">Frame Period P:</span><span class="metric-val" id="framingPeriodVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">Frame Phase φ*:</span><span class="metric-val" id="framingPhaseVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">GF(2) Parity Relations:</span><span class="metric-val" id="gf2RelationsVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">CRC Candidate:</span><span class="metric-val" id="crcPolyVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">CRC Acceptance Rate:</span><span class="metric-val" id="crcRateVal">—</span></div>
+        </div>
       </div>
     </section>
 
