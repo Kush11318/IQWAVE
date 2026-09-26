@@ -167,3 +167,135 @@ def identify_interleaver_width(
 
     return ret
 
+
+def deinterleave_convolutional(
+    bits: Union[np.ndarray, List[int]],
+    branches: int = 4,
+    delay_step: int = 2
+) -> np.ndarray:
+    """Convolutional (Forney/Ramsey) de-interleaver (Task iii).
+    
+    Branch i (0 <= i < branches) applies a FIFO delay of (branches - 1 - i) * delay_step symbols.
+    """
+    b = np.asarray(bits, dtype=np.uint8).flatten()
+    M = max(1, int(branches))
+    D = max(1, int(delay_step))
+    out = np.zeros(len(b), dtype=np.uint8)
+
+    delays = [(M - 1 - i) * D for i in range(M)]
+    fifos = [np.zeros(d, dtype=np.uint8) if d > 0 else None for d in delays]
+
+    for idx, bit in enumerate(b):
+        branch = idx % M
+        d = delays[branch]
+        if d == 0:
+            out[idx] = bit
+        else:
+            q = fifos[branch]
+            out[idx] = q[0]
+            fifos[branch] = np.roll(q, -1)
+            fifos[branch][-1] = bit
+
+    return out
+
+
+def deinterleave_diagonal(
+    bits: Union[np.ndarray, List[int]],
+    rows: int = 4,
+    cols: int = 8
+) -> np.ndarray:
+    """Diagonal matrix de-interleaver (Task iii).
+    
+    Reads along diagonal paths (row + col) % cols.
+    """
+    b = np.asarray(bits, dtype=np.uint8).flatten()
+    R = max(1, int(rows))
+    C = max(1, int(cols))
+    block_size = R * C
+    n_blocks = len(b) // block_size
+    if n_blocks == 0:
+        return b
+
+    out = np.zeros(len(b), dtype=np.uint8)
+    for blk in range(n_blocks):
+        sub = b[blk * block_size : (blk + 1) * block_size].reshape(R, C)
+        rec = np.zeros((R, C), dtype=np.uint8)
+        for r in range(R):
+            for c in range(C):
+                rec[r, c] = sub[r, (c + r) % C]
+        out[blk * block_size : (blk + 1) * block_size] = rec.flatten()
+
+    if len(b) > n_blocks * block_size:
+        out[n_blocks * block_size :] = b[n_blocks * block_size :]
+
+    return out
+
+
+def deinterleave_pseudorandom(
+    bits: Union[np.ndarray, List[int]],
+    seed: int = 42,
+    block_size: int = 64
+) -> np.ndarray:
+    """Pseudo-random permutation de-interleaver (Task iii).
+    
+    Applies inverse pseudo-random permutation generated via reproducible PRNG seed.
+    """
+    b = np.asarray(bits, dtype=np.uint8).flatten()
+    B = max(2, int(block_size))
+    n_blocks = len(b) // B
+    if n_blocks == 0:
+        return b
+
+    rng = np.random.RandomState(int(seed))
+    perm = rng.permutation(B)
+    inv_perm = np.zeros(B, dtype=int)
+    inv_perm[perm] = np.arange(B)
+
+    out = np.zeros(len(b), dtype=np.uint8)
+    for blk in range(n_blocks):
+        sub = b[blk * B : (blk + 1) * B]
+        out[blk * B : (blk + 1) * B] = sub[inv_perm]
+
+    if len(b) > n_blocks * B:
+        out[n_blocks * B :] = b[n_blocks * B :]
+
+    return out
+
+
+def evaluate_all_interleaver_types(
+    rx_bits: Union[np.ndarray, List[int]]
+) -> Dict[str, Any]:
+    """Evaluate Block, Convolutional, Diagonal, and Pseudo-Random de-interleavers (Task iii)."""
+    rx = np.asarray(rx_bits, dtype=np.uint8).flatten()
+
+    # 1. Block (Row-Column)
+    block_res = identify_interleaver_width(rx)
+
+    # 2. Convolutional
+    conv_bits = deinterleave_convolutional(rx, branches=4, delay_step=2)
+    ev_conv = evaluate_hamming_evidence(conv_bits)
+
+    # 3. Diagonal
+    diag_bits = deinterleave_diagonal(rx, rows=4, cols=8)
+    ev_diag = evaluate_hamming_evidence(diag_bits)
+
+    # 4. Pseudo-random
+    prn_bits = deinterleave_pseudorandom(rx, seed=42, block_size=64)
+    ev_prn = evaluate_hamming_evidence(prn_bits)
+
+    types = [
+        {"type": "BLOCK_ROW_COLUMN", "config": f"Width {block_res.get('best_width', 20)}", "score": float(block_res.get("best_score", 0.51))},
+        {"type": "CONVOLUTIONAL", "config": "Branches=4, Delay=2", "score": float(1.0 - ev_conv["zero_syndrome_fraction"])},
+        {"type": "DIAGONAL", "config": "4x8 Matrix Grid", "score": float(1.0 - ev_diag["zero_syndrome_fraction"])},
+        {"type": "PSEUDO_RANDOM", "config": "Block 64, PRN Seed 42", "score": float(1.0 - ev_prn["zero_syndrome_fraction"])}
+    ]
+    types.sort(key=lambda x: x["score"])
+
+    return {
+        "status": "SUCCESS",
+        "top_interleaver_type": types[0]["type"],
+        "top_configuration": types[0]["config"],
+        "evaluated_interleavers": types,
+        "block_analysis": block_res
+    }
+

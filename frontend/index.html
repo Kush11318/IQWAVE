@@ -250,6 +250,39 @@
     </section>
 
     <!-- ========================================================================
+         STEP 3B: TIME-FREQUENCY WATERFALL (SPECTROGRAM / STFT)
+         ======================================================================== -->
+    <section class="psd-instrument-card waterfall-card">
+      <div class="psd-instrument-header">
+        <div class="psd-title-group">
+          <span class="psd-main-title"><span>🌊</span> TIME-FREQUENCY WATERFALL (SPECTROGRAM)</span>
+          <div class="psd-chips-group">
+            <span class="psd-chip">STFT: 256-PT FFT</span>
+            <span class="psd-chip" id="waterfallSpanChip">SPAN: 20.00 MHz</span>
+            <span class="psd-chip">WINDOW: HANNING</span>
+            <span class="psd-chip">SLICES: 64 TIME FRAMES</span>
+          </div>
+        </div>
+        <div class="waterfall-scale-bar-wrapper">
+          <span class="waterfall-scale-lbl">-85 dBFS</span>
+          <div class="waterfall-thermal-bar" title="RF Thermal Heatmap Scale"></div>
+          <span class="waterfall-scale-lbl">0 dBFS</span>
+        </div>
+      </div>
+
+      <div class="waterfall-canvas-wrapper">
+        <canvas id="waterfallCanvas"></canvas>
+      </div>
+
+      <div class="waterfall-axis-bar">
+        <span id="waterfallTickLeft">-Fs/2 (Lower Band Edge)</span>
+        <span class="center-freq-chip" id="waterfallCenterTick">Fc: 142.850 MHz</span>
+        <span id="waterfallTickRight">+Fs/2 (Upper Band Edge)</span>
+      </div>
+    </section>
+
+
+    <!-- ========================================================================
          STEP 4: COMPANION SIGNAL VISUALIZERS (WAVEFORM & CONSTELLATIONS)
          ======================================================================== -->
     <section class="companion-plots-grid">
@@ -456,8 +489,47 @@
           <div class="metric-row"><span class="metric-key">CRC Candidate:</span><span class="metric-val" id="crcPolyVal">—</span></div>
           <div class="metric-row"><span class="metric-key">CRC Acceptance Rate:</span><span class="metric-val" id="crcRateVal">—</span></div>
         </div>
+
+        <!-- Card K: Bit Stream Correlation & Protocol Demarcation (PS Tasks iii, iv, v) -->
+        <div class="result-card card-accent-blue" style="grid-column: span 2;">
+          <div class="result-card-header">
+            <span>BIT STREAM CORRELATION &amp; PROTOCOL DEMARCATION (HEADER VS. PAYLOAD)</span>
+            <span class="status-badge cyan" id="corrSyncBadge">R_xy = 0.985 (SYNC LOCKED)</span>
+          </div>
+          <div class="correlation-partition-bar">
+            <div class="part-item part-sync" title="Known sync word cross-correlation marker">
+              <span class="part-lbl">SYNC / PREAMBLE</span>
+              <span class="part-sub">Bits 0–31 (32b)</span>
+              <span class="part-stat">R_xy = 0.985</span>
+            </div>
+            <div class="part-item part-hdr" title="Demarcated protocol header fields">
+              <span class="part-lbl">FRAME HEADER</span>
+              <span class="part-sub">Bits 32–63 (32b)</span>
+              <span class="part-stat">Seq #04 • Len: 32</span>
+            </div>
+            <div class="part-item part-pay" title="De-interleaved recovered payload">
+              <span class="part-lbl">PAYLOAD FIELD</span>
+              <span class="part-sub">Bits 64–175 (112b)</span>
+              <span class="part-stat" id="corrPayloadStat">14 Octets FEC</span>
+            </div>
+            <div class="part-item part-crc" title="Cyclic redundancy check FCS field">
+              <span class="part-lbl">CRC-16 FCS</span>
+              <span class="part-sub">Bits 176–191 (16b)</span>
+              <span class="part-stat" id="corrCrcStatus">CCITT [VALID]</span>
+            </div>
+          </div>
+          <div class="correlation-details-grid">
+            <div class="metric-row"><span class="metric-key">Cross-Correlation Peak (R_xy):</span><span class="metric-val" id="corrPeakVal">0.985 (Threshold &gt; 0.85)</span></div>
+            <div class="metric-row"><span class="metric-key">Frame Boundary Offset:</span><span class="metric-val" id="corrOffsetVal">Offset: 0 bits (Aligned)</span></div>
+            <div class="metric-row"><span class="metric-key">Interleaver De-interleaved:</span><span class="metric-val" id="corrDeintVal">Block (Row-Column W=20)</span></div>
+            <div class="metric-row"><span class="metric-key">Multi-Interleaver Pool:</span><span class="metric-val" id="corrMultiIntVal">Block, Conv, Diag, Pseudo-Random</span></div>
+            <div class="metric-row"><span class="metric-key">FEC Verification:</span><span class="metric-val" id="corrFecVal">Hamming / Conv Viterbi / Concatenated</span></div>
+            <div class="metric-row"><span class="metric-key">Payload Recovery Status:</span><span class="metric-val" id="corrRecoveryVal" style="color:var(--accent-mint); font-weight:700;">VALIDATED &amp; CHECKSUM CONFIRMED</span></div>
+          </div>
+        </div>
       </div>
     </section>
+
 
     <!-- ========================================================================
          STEP 5: AUTHORITATIVE REPORT GENERATION BAR

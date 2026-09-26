@@ -29,6 +29,60 @@ from .interleaver import deinterleave_row_column
 from .hamming import evaluate_hamming_evidence
 from .bch import evaluate_bch_evidence
 from .ldpc import evaluate_ldpc_syndrome
+from .convolutional import viterbi_decode_hard_k3
+from .reed_solomon import decode_rs_15_11, evaluate_rs_parameter_candidates
+
+
+def evaluate_concatenated_code(
+    rx_bits: Union[np.ndarray, List[int]]
+) -> Dict[str, Any]:
+    """Evaluate Concatenated Code (Outer RS(15,11) + Inner Convolutional K=3) per Task iv.
+    
+    1. Inner Viterbi hard decoding of received sequence.
+    2. Outer Reed-Solomon syndrome consistency on decoded symbols.
+    """
+    rx = np.asarray(rx_bits, dtype=np.uint8).flatten()
+    if len(rx) < 32:
+        return {
+            "status": "INSUFFICIENT_DATA",
+            "score": 1.0,
+            "lift": 0.0,
+            "inner_viterbi_success": False,
+            "outer_rs_success": False
+        }
+    
+    # 1. Inner Viterbi decoding
+    inner_decoded, _ = viterbi_decode_hard_k3(rx)
+    
+    # 2. Outer RS evaluation on inner decoded bits
+    n_nibbles = len(inner_decoded) // 4
+    if n_nibbles < 15:
+        return {
+            "status": "INSUFFICIENT_NIBBLES",
+            "score": 0.8,
+            "lift": 0.2,
+            "inner_viterbi_success": True,
+            "outer_rs_success": False,
+            "inner_bits_count": len(inner_decoded)
+        }
+    
+    nibbles = [
+        int(inner_decoded[i*4] << 3 | inner_decoded[i*4+1] << 2 | inner_decoded[i*4+2] << 1 | inner_decoded[i*4+3])
+        for i in range(n_nibbles)
+    ]
+    rs_res = evaluate_rs_parameter_candidates(nibbles)
+    top_rs_lift = rs_res["candidates"][0]["lift"] if rs_res.get("candidates") else 0.0
+    
+    return {
+        "status": "SUCCESS",
+        "family": "Concatenated (RS outer + Conv inner)",
+        "parameters": "Outer RS(15,11) GF(16) + Inner Conv K=3 R=1/2 Viterbi",
+        "score": float(max(0.0, 1.0 - top_rs_lift)),
+        "lift": float(top_rs_lift),
+        "metric_type": "concatenated_rs_viterbi_consistency",
+        "inner_bits_decoded": len(inner_decoded)
+    }
+
 
 
 VALIDATED_INTERLEAVER_CANDIDATE_WIDTHS: List[int] = [5, 10, 20, 25, 50]
