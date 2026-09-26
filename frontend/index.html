@@ -40,72 +40,79 @@
       <div class="control-card-header">
         <div class="step-indicator">
           <span class="step-number">1</span>
-          <span class="step-title">Signal Ingestion &amp; Execution Control</span>
+          <span class="step-title">Automated Signal Ingestion &amp; Blind Analysis</span>
         </div>
         <div id="activeSignalLabel" class="active-signal-tag">
-          Loading signal vector...
+          Tactical VHF QPSK Carrier (142.850 MHz, 1200 Sa)
         </div>
       </div>
 
-      <div class="control-grid">
-        <!-- Preset Selector -->
-        <div class="form-group">
-          <label class="form-label">Signal Source / Preset</label>
-          <select id="signalPresetSelect" class="form-select">
-            <option value="qpsk_1200" selected>📡 Tactical VHF QPSK Carrier (142.850 MHz, SNR 24 dB, 1200 Sa)</option>
-            <option value="qam16_1600">⚡ Avionics 16-QAM Wideband Grid (SNR 26 dB, 1600 Sa)</option>
-            <option value="psk8_1200">🎯 Deep-Space 8-PSK Phase Ring (SNR 24 dB, 1200 Sa)</option>
-            <option value="bpsk_1000">📻 Military BPSK Jam-Resistant Burst (SNR 20 dB, 1000 Sa)</option>
+      <!-- Main Upload & Auto-Run Area: Single Step Ingestion -->
+      <div class="upload-dropzone" id="uploadDropZone" title="Drop or select raw signal file for instant blind calculation">
+        <input type="file" id="fileUploadInput" accept=".json,.iq,.wav,.bin,.dat" style="display:none;">
+        <div class="dropzone-content">
+          <div class="upload-glow-icon">⚡</div>
+          <div class="upload-text-group">
+            <h3 class="upload-main-heading">Upload Signal File (.iq / .wav / .json)</h3>
+            <p class="upload-sub-heading">Drop your file here or click to browse. The system automatically detects sampling rate, carrier frequency, AMC modulation, demodulates, de-interleaves, and decodes FEC completely on its own.</p>
+          </div>
+          <button type="button" class="btn-primary-run" id="btnUploadFileTrigger">
+            <span>📂</span> Choose Signal File
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Sample & Action Bar -->
+      <div class="quick-action-bar">
+        <div class="quick-sample-group">
+          <span class="quick-sample-lbl">OR TEST SAMPLE CAPTURE:</span>
+          <select id="signalPresetSelect" class="form-select sample-select">
+            <option value="qpsk_1200" selected>📡 Tactical VHF QPSK Carrier (142.850 MHz, 1200 Sa)</option>
+            <option value="qam16_1600">⚡ Avionics 16-QAM Wideband Grid (1600 Sa)</option>
+            <option value="psk8_1200">🎯 Deep-Space 8-PSK Phase Ring (1200 Sa)</option>
+            <option value="bpsk_1000">📻 Military BPSK Jam-Resistant Burst (1000 Sa)</option>
             <option value="fsk_1200">🛰️ Continuous-Phase GFSK Telemetry (1200 Sa)</option>
-            <option value="radioml_128">🔬 RadioML 2016.10a Measured SDR Capture @ 18 dB (128 Sa)</option>
+            <option value="radioml_128">🔬 RadioML 2016.10a Measured SDR Capture (128 Sa)</option>
             <option value="zero_power">⚠️ Zero-Power Noise (Rejection Test)</option>
             <option value="dc_offset">⚠️ Pure DC Offset (Rejection Test)</option>
           </select>
+          <button id="btnRunPipeline" class="btn-secondary auto-run-btn">
+            <span>⚡</span> RUN COMPLETE ANALYSIS
+          </button>
         </div>
 
-        <!-- Sampling Rate (Optional) -->
-        <div class="form-group">
-          <label class="form-label">Sampling Rate Fs (Hz)</label>
-          <input type="number" id="inputFs" class="form-input" placeholder="e.g. 20000000 (Optional)" value="20000000">
-        </div>
-
-        <!-- Center Frequency (Optional) -->
-        <div class="form-group">
-          <label class="form-label">Center Freq Fc (Hz)</label>
-          <input type="number" id="inputFc" class="form-input" placeholder="e.g. 142850000 (Optional)" value="142850000">
-        </div>
-
-        <!-- Modulation Override -->
-        <div class="form-group">
-          <label class="form-label">Modulation Override</label>
-          <select id="selectModulation" class="form-select">
-            <option value="">AUTO (AMC Detection)</option>
-            <option value="QPSK" selected>QPSK</option>
-            <option value="BPSK">BPSK</option>
-            <option value="8PSK">8PSK</option>
-            <option value="QAM16">QAM16</option>
-            <option value="QAM64">QAM64</option>
-            <option value="GFSK">GFSK</option>
-            <option value="CPFSK">CPFSK</option>
-          </select>
-        </div>
-
-        <!-- Primary CTA: RUN ANALYSIS -->
-        <button id="btnRunPipeline" class="btn-primary-run">
-          <span>⚡</span> RUN COMPLETE ANALYSIS
+        <button id="btnReloadPreset" class="btn-secondary" style="display:none;">
+          <span>🔄</span> Reset
         </button>
       </div>
 
-      <!-- File upload & tools row -->
-      <div class="secondary-actions-bar">
-        <label class="btn-secondary" style="cursor:pointer;">
-          <span>📂</span> Upload Custom Signal (.json / .iq / .wav)
-          <input type="file" id="fileUploadInput" accept=".json,.iq,.wav,.bin" style="display:none;">
-        </label>
-        <button id="btnReloadPreset" class="btn-secondary">
-          <span>🔄</span> Reset to Preset
-        </button>
-      </div>
+      <!-- Optional Collapsible Advanced Controls (Zero Clutter Default) -->
+      <details class="advanced-tuning-accordion">
+        <summary class="advanced-tuning-summary">⚙️ Optional Parameter Overrides (Default: 100% Automated Blind Detection)</summary>
+        <div class="advanced-tuning-body">
+          <div class="form-group">
+            <label class="form-label">Sampling Rate Fs (Hz)</label>
+            <input type="number" id="inputFs" class="form-input" placeholder="Auto-calculated" value="20000000">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Center Freq Fc (Hz)</label>
+            <input type="number" id="inputFc" class="form-input" placeholder="Auto-calculated" value="142850000">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Modulation Override</label>
+            <select id="selectModulation" class="form-select">
+              <option value="" selected>AUTO (Blind AMC Classification)</option>
+              <option value="QPSK">QPSK</option>
+              <option value="BPSK">BPSK</option>
+              <option value="8PSK">8PSK</option>
+              <option value="QAM16">QAM16</option>
+              <option value="QAM64">QAM64</option>
+              <option value="GFSK">GFSK</option>
+              <option value="CPFSK">CPFSK</option>
+            </select>
+          </div>
+        </div>
+      </details>
 
       <!-- Alert Banner -->
       <div id="alertBanner" class="alert-banner"></div>

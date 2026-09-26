@@ -322,49 +322,59 @@ document.addEventListener('DOMContentLoaded', () => {
     showError('Loaded Pure DC Vector: Degenerate zero-variance rejection test.');
   }
 
-  signalPresetSelect.addEventListener('change', (e) => {
-    loadPresetFixture(e.target.value);
-  });
+  // Upload Drop Zone & Trigger Buttons
+  const uploadDropZone = document.getElementById('uploadDropZone');
+  const btnUploadFileTrigger = document.getElementById('btnUploadFileTrigger');
 
-  btnReloadPreset.addEventListener('click', () => {
-    signalPresetSelect.value = 'qpsk_1200';
-    loadPresetFixture('qpsk_1200');
-  });
+  if (uploadDropZone) {
+    uploadDropZone.addEventListener('click', (e) => {
+      // Don't trigger twice if clicking button directly
+      if (e.target !== fileUploadInput) {
+        fileUploadInput.click();
+      }
+    });
 
-  // Dynamic live inputs for Sampling Rate, Center Frequency, and Modulation
-  if (inputFs) {
-    inputFs.addEventListener('input', () => {
-      const val = parseFloat(inputFs.value);
-      if (!isNaN(val) && val > 0) {
-        currentSignal.fs = val;
-        renderSignalVisuals(currentSignal, currentPipelineResult?.module5_recovery);
+    uploadDropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      uploadDropZone.classList.add('dragover');
+    });
+
+    uploadDropZone.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      uploadDropZone.classList.remove('dragover');
+    });
+
+    uploadDropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      uploadDropZone.classList.remove('dragover');
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        handleIncomingFile(e.dataTransfer.files[0]);
       }
     });
   }
 
-  if (inputFc) {
-    inputFc.addEventListener('input', () => {
-      const val = parseFloat(inputFc.value);
-      if (!isNaN(val) && val > 0) {
-        currentSignal.fc = val;
-        renderSignalVisuals(currentSignal, currentPipelineResult?.module5_recovery);
-      }
-    });
-  }
-
-  if (selectModulation) {
-    selectModulation.addEventListener('change', () => {
-      currentSignal.modulation = selectModulation.value || 'QPSK';
-      if (activeSignalLabel) {
-        activeSignalLabel.textContent = `${currentSignal.sourceName} (${currentSignal.sampleCount} Sa - ${currentSignal.modulation})`;
-      }
+  if (btnUploadFileTrigger) {
+    btnUploadFileTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      fileUploadInput.click();
     });
   }
 
   // Custom File Upload
-  fileUploadInput.addEventListener('change', async (e) => {
+  fileUploadInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
+    if (file) handleIncomingFile(file);
+  });
+
+  async function handleIncomingFile(file) {
     if (!file) return;
+
+    if (activeSignalLabel) {
+      activeSignalLabel.textContent = `Ingesting ${file.name}... Calculating blind parameters...`;
+    }
 
     if (file.name.endsWith('.json')) {
       const text = await file.text();
@@ -377,16 +387,18 @@ document.addEventListener('DOMContentLoaded', () => {
             q: parsed.q,
             sourceName: file.name,
             sampleCount: parsed.i.length,
-            fs: meta.sample_rate || (inputFs.value ? parseFloat(inputFs.value) : 20000000.0),
-            fc: meta.center_frequency || (inputFc.value ? parseFloat(inputFc.value) : 142850000.0),
-            modulation: meta.modulation || selectModulation.value || 'QPSK'
+            fs: meta.sample_rate || (inputFs?.value ? parseFloat(inputFs.value) : 20000000.0),
+            fc: meta.center_frequency || (inputFc?.value ? parseFloat(inputFc.value) : 142850000.0),
+            modulation: meta.modulation || selectModulation?.value || 'QPSK'
           };
           if (inputFs && currentSignal.fs) inputFs.value = currentSignal.fs;
           if (inputFc && currentSignal.fc) inputFc.value = currentSignal.fc;
           if (selectModulation && currentSignal.modulation) selectModulation.value = currentSignal.modulation;
-          activeSignalLabel.textContent = `${file.name} (${currentSignal.sampleCount} Sa - ${currentSignal.modulation})`;
+          activeSignalLabel.textContent = `${file.name} (${currentSignal.sampleCount} Sa - Blind Mode)`;
           hideAlert();
           renderSignalVisuals(currentSignal, null);
+          // Automatically run complete pipeline on upload
+          await runPipeline();
         } else {
           showError('Invalid JSON format: Expected {"i": [...], "q": [...]}');
         }
@@ -397,16 +409,26 @@ document.addEventListener('DOMContentLoaded', () => {
       // Ingest through backend container validation
       const formData = new FormData();
       formData.append('file', file);
-      if (inputFs.value) formData.append('sample_rate', inputFs.value);
-      if (inputFc.value) formData.append('center_frequency', inputFc.value);
+      if (inputFs && inputFs.value) formData.append('sample_rate', inputFs.value);
+      if (inputFc && inputFc.value) formData.append('center_frequency', inputFc.value);
       try {
+        setLoading(true);
         const res = await fetch('/api/pipeline/upload', { method: 'POST', body: formData });
         const data = await res.json();
+        currentPipelineResult = data;
         renderPipelineResult(data);
       } catch (err) {
         showError('Upload Ingestion Error: ' + err.message);
+      } finally {
+        setLoading(false);
       }
     }
+  }
+
+  signalPresetSelect.addEventListener('change', async (e) => {
+    await loadPresetFixture(e.target.value);
+    // Automatically calculate on preset change as well!
+    await runPipeline();
   });
 
   // ============================================================================
@@ -425,10 +447,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const payload = {
         i_channel: currentSignal.i,
         q_channel: currentSignal.q,
-        sample_rate: inputFs.value ? parseFloat(inputFs.value) : (currentSignal.fs || null),
-        center_frequency: inputFc.value ? parseFloat(inputFc.value) : (currentSignal.fc || null),
-        modulation: selectModulation.value || currentSignal.modulation || null,
-        override_modulation: selectModulation.value || currentSignal.modulation || null,
+        sample_rate: inputFs?.value ? parseFloat(inputFs.value) : (currentSignal.fs || null),
+        center_frequency: inputFc?.value ? parseFloat(inputFc.value) : (currentSignal.fc || null),
+        modulation: selectModulation?.value || currentSignal.modulation || null,
+        override_modulation: selectModulation?.value || currentSignal.modulation || null,
         input_type: currentSignal.sourceName || 'CUSTOM_CANONICAL_IQ'
       };
 
