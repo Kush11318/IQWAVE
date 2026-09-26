@@ -313,6 +313,36 @@ document.addEventListener('DOMContentLoaded', () => {
     loadPresetFixture('qpsk_1200');
   });
 
+  // Dynamic live inputs for Sampling Rate, Center Frequency, and Modulation
+  if (inputFs) {
+    inputFs.addEventListener('input', () => {
+      const val = parseFloat(inputFs.value);
+      if (!isNaN(val) && val > 0) {
+        currentSignal.fs = val;
+        renderSignalVisuals(currentSignal, currentPipelineResult?.module5_recovery);
+      }
+    });
+  }
+
+  if (inputFc) {
+    inputFc.addEventListener('input', () => {
+      const val = parseFloat(inputFc.value);
+      if (!isNaN(val) && val > 0) {
+        currentSignal.fc = val;
+        renderSignalVisuals(currentSignal, currentPipelineResult?.module5_recovery);
+      }
+    });
+  }
+
+  if (selectModulation) {
+    selectModulation.addEventListener('change', () => {
+      currentSignal.modulation = selectModulation.value || 'QPSK';
+      if (activeSignalLabel) {
+        activeSignalLabel.textContent = `${currentSignal.sourceName} (${currentSignal.sampleCount} Sa - ${currentSignal.modulation})`;
+      }
+    });
+  }
+
   // Custom File Upload
   fileUploadInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
@@ -566,24 +596,33 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!sig) return;
     lastVisualSig = sig;
     lastVisualM5 = m5;
-    drawTimeWaveform(waveformCanvas, sig.i, sig.q);
-    drawRealPsd(psdCanvas, sig.i, sig.q, sig.fs, sig.fc);
+    const currentFs = parseFloat(inputFs?.value) || sig.fs || 20000000.0;
+    const currentFc = parseFloat(inputFc?.value) || sig.fc || 142850000.0;
+    sig.fs = currentFs;
+    sig.fc = currentFc;
+    drawTimeWaveform(waveformCanvas, sig.i, sig.q, currentFs);
+    drawRealPsd(psdCanvas, sig.i, sig.q, currentFs, currentFc);
     drawRawScatter(rawConstellationCanvas, sig.i, sig.q);
     drawRecoveredScatter(recoveredConstellationCanvas, m5);
   }
 
   // Plot 1: Time-Domain Waveform I(t) & Q(t) with Smooth Oscilloscope Beam Sweep
-  function drawTimeWaveform(canvas, iArr, qArr) {
+  function drawTimeWaveform(canvas, iArr, qArr, fs) {
     if (!canvas || !iArr || !qArr || iArr.length === 0) return;
     if (animWaveformId) cancelAnimationFrame(animWaveformId);
 
+    const samplingFs = fs || (currentSignal && currentSignal.fs) || 20000000.0;
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     const ctx = canvas.getContext('2d');
     const w = canvas.width = canvas.clientWidth;
     const h = canvas.height = canvas.clientHeight;
 
     const N = Math.min(iArr.length, 128);
-    waveformSampleBadge.textContent = `${iArr.length} Samples`;
+    const durationUs = (iArr.length / samplingFs) * 1e6;
+    const dtNs = (1 / samplingFs) * 1e9;
+    if (waveformSampleBadge) {
+      waveformSampleBadge.textContent = `${iArr.length} Sa • ${durationUs >= 1000 ? (durationUs/1000).toFixed(2) + ' ms' : durationUs.toFixed(1) + ' µs'} (${dtNs.toFixed(1)} ns/Sa)`;
+    }
 
     let maxVal = 1e-6;
     for (let k = 0; k < N; k++) {
@@ -704,8 +743,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Dynamic frequency parameters
-    const samplingFs = fs || 1000000.0;
-    const centerFc = fc || 142850000.0;
+    const samplingFs = fs || (currentSignal && currentSignal.fs) || 20000000.0;
+    const centerFc = fc || (currentSignal && currentSignal.fc) || 142850000.0;
     const normFreq = (peakIdx - N_FFT / 2) / N_FFT;
     const actualPeakHz = centerFc + normFreq * samplingFs;
     const ifOffsetHz = actualPeakHz - centerFc;
@@ -718,12 +757,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const obwSpanBins = Math.max(2, kRight - kLeft);
     const obwHz = (obwSpanBins / N_FFT) * samplingFs;
 
-    const dynamicRange = Math.max(10, peakPower - (-80));
+    // Calculate real noise floor from lowest 25% FFT bins
+    const sortedBins = Array.from(psdDb).sort((a, b) => a - b);
+    const realNoiseFloorDb = sortedBins[Math.floor(sortedBins.length * 0.25)];
+    const dynamicRange = Math.max(2.0, peakPower - realNoiseFloorDb);
+    const sinadDb = Math.max(3.0, dynamicRange - 2.5);
+    const enobVal = Math.max(1.0, (sinadDb - 1.76) / 6.02);
+    const deltaDb = Math.max(0.5, peakPower - (realNoiseFloorDb + 6.0));
 
     // Telemetry Card Metric Updates with Smooth Number Animation
     if (telemetryFcVal) animateNumber(telemetryFcVal, parseFloat(telemetryFcVal.textContent) || (actualPeakHz / 1e6), actualPeakHz / 1e6, 380, 3);
     if (telemetryBandName) {
-      if (actualPeakHz >= 30e6 && actualPeakHz <= 300e6) telemetryBandName.textContent = 'VHF Tactical Band';
+      if (actualPeakHz >= 3e6 && actualPeakHz < 30e6) telemetryBandName.textContent = 'HF Tactical Band';
+      else if (actualPeakHz >= 30e6 && actualPeakHz <= 300e6) telemetryBandName.textContent = 'VHF Tactical Band';
       else if (actualPeakHz > 300e6 && actualPeakHz <= 3e9) telemetryBandName.textContent = 'UHF Tactical Band';
       else telemetryBandName.textContent = 'RF Tactical Band';
     }
@@ -733,13 +779,25 @@ document.addEventListener('DOMContentLoaded', () => {
     if (telemetryFsVal) telemetryFsVal.textContent = (samplingFs / 1e6).toFixed(2);
     if (telemetryNyquist) telemetryNyquist.textContent = `${(samplingFs / 2e6).toFixed(2)}`;
     if (telemetrySamples) telemetrySamples.textContent = `${iArr.length} Sa`;
+    if (telemetryFsBadge) {
+      const sps = (currentPipelineResult?.module4_parameters?.samples_per_symbol) || 4.0;
+      telemetryFsBadge.innerHTML = `OVERSAMPLED<br>${sps.toFixed(1)}x`;
+    }
 
     if (telemetrySnrVal) animateNumber(telemetrySnrVal, parseFloat(telemetrySnrVal.textContent) || dynamicRange, dynamicRange, 380, 1);
-    if (telemetrySinadVal) telemetrySinadVal.textContent = `+${Math.max(5, dynamicRange * 0.35).toFixed(1)} dB SINAD`;
-    if (telemetryDeltaVal) telemetryDeltaVal.textContent = `+${Math.max(2, peakPower - (-50)).toFixed(1)}`;
+    if (telemetrySinadVal) telemetrySinadVal.textContent = `+${sinadDb.toFixed(1)} dB SINAD`;
+    if (telemetryNoiseFloor) telemetryNoiseFloor.textContent = `${realNoiseFloorDb.toFixed(1)}`;
+    if (telemetryEnob) telemetryEnob.textContent = `${enobVal.toFixed(1)}`;
+    if (telemetryDeltaVal) telemetryDeltaVal.textContent = `+${deltaDb.toFixed(1)}`;
+    if (telemetryThreshold) telemetryThreshold.textContent = `${(realNoiseFloorDb + 6.0).toFixed(1)} dBFS`;
+    if (telemetryBurstState) telemetryBurstState.textContent = deltaDb > 3.0 ? 'ACTIVE BURST' : 'NOISE / IDLE';
+    if (telemetryEnergyBadge) {
+      telemetryEnergyBadge.innerHTML = deltaDb > 3.0 ? '<span class="dot">●</span> ACTIVE EMITTER' : '<span class="dot">○</span> CHANNEL IDLE';
+      telemetryEnergyBadge.className = deltaDb > 3.0 ? 'inst-badge-amber' : 'inst-badge-sky';
+    }
 
     // Update PSD HUD Marker & Chips
-    if (psdSpanChip) psdSpanChip.textContent = `SPAN: ${(samplingFs / 1e6).toFixed(1)} MHz`;
+    if (psdSpanChip) psdSpanChip.textContent = `SPAN: ${(samplingFs / 1e6).toFixed(2)} MHz`;
     if (markerPeakVal) markerPeakVal.textContent = `${peakPower.toFixed(1)} dBFS`;
     if (markerFreqVal) markerFreqVal.textContent = `${(actualPeakHz / 1e6).toFixed(3)} MHz`;
     if (markerObwVal) markerObwVal.textContent = `${(obwHz / 1e6).toFixed(2)} MHz`;
