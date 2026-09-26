@@ -25,7 +25,7 @@
         </div>
       </div>
       <div class="header-status-strip">
-        <div class="status-badge green" title="Comprehensive DSP Engine: Modules 1–10 Architecture">✓ DSP ENGINE: OPERATIONAL</div>
+        <div id="headerDspStatus" class="status-badge green" title="Comprehensive DSP Engine: Modules 1–10 Architecture">✓ DSP ENGINE: OPERATIONAL</div>
         <div class="status-badge cyan">✓ 258/258 Tests Passed</div>
         <button id="btnThemeToggle" class="btn-theme-toggle" title="Switch Theme">
           <span id="themeToggleIcon">🌙</span> <span id="themeToggleText">Dark Mode</span>
@@ -312,52 +312,52 @@
       </div>
 
       <div class="checklist-strip">
-        <div class="stage-box">
+        <div class="stage-box" data-stage="1" title="Click to inspect Stage 01 telemetry">
           <span class="stage-num">01</span>
           <span class="stage-name">Canonical IQ</span>
           <span id="badgeM1" class="stage-status-badge not_executed">STANDBY</span>
         </div>
-        <div class="stage-box">
+        <div class="stage-box" data-stage="2" title="Click to inspect Stage 02 telemetry">
           <span class="stage-num">02</span>
           <span class="stage-name">Observations</span>
           <span id="badgeM2" class="stage-status-badge not_executed">STANDBY</span>
         </div>
-        <div class="stage-box">
+        <div class="stage-box" data-stage="3" title="Click to inspect Stage 03 telemetry">
           <span class="stage-num">03</span>
           <span class="stage-name">Modulation AMC</span>
           <span id="badgeM3" class="stage-status-badge not_executed">STANDBY</span>
         </div>
-        <div class="stage-box">
+        <div class="stage-box" data-stage="4" title="Click to inspect Stage 04 telemetry">
           <span class="stage-num">04</span>
           <span class="stage-name">Parameters</span>
           <span id="badgeM4" class="stage-status-badge not_executed">STANDBY</span>
         </div>
-        <div class="stage-box">
+        <div class="stage-box" data-stage="5" title="Click to inspect Stage 05 telemetry">
           <span class="stage-num">05</span>
           <span class="stage-name">Carrier Sync</span>
           <span id="badgeM5" class="stage-status-badge not_executed">STANDBY</span>
         </div>
-        <div class="stage-box">
+        <div class="stage-box" data-stage="6" title="Click to inspect Stage 06 telemetry">
           <span class="stage-num">06</span>
           <span class="stage-name">SNR Quality</span>
           <span id="badgeM6" class="stage-status-badge not_executed">STANDBY</span>
         </div>
-        <div class="stage-box">
+        <div class="stage-box" data-stage="7" title="Click to inspect Stage 07 telemetry">
           <span class="stage-num">07</span>
           <span class="stage-name">Soft Bits</span>
           <span id="badgeM7" class="stage-status-badge not_executed">STANDBY</span>
         </div>
-        <div class="stage-box">
+        <div class="stage-box" data-stage="8" title="Click to inspect Stage 08 telemetry">
           <span class="stage-num">08</span>
           <span class="stage-name">Blind FEC</span>
           <span id="badgeM8" class="stage-status-badge not_executed">STANDBY</span>
         </div>
-        <div class="stage-box">
+        <div class="stage-box" data-stage="9" title="Click to inspect Stage 09 telemetry">
           <span class="stage-num">09</span>
           <span class="stage-name">Frame Structure</span>
           <span id="badgeM9" class="stage-status-badge not_executed">STANDBY</span>
         </div>
-        <div class="stage-box">
+        <div class="stage-box" data-stage="10" title="Click to inspect Stage 10 telemetry">
           <span class="stage-num">10</span>
           <span class="stage-name">CRC &amp; Interleave</span>
           <span id="badgeM10" class="stage-status-badge not_executed">STANDBY</span>
@@ -476,6 +476,49 @@
         <button id="btnDownloadJson" class="btn-report">Download JSON</button>
       </div>
     </section>
+
+    <!-- Stage Telemetry & Deep Inspector Modal -->
+    <div id="stageInspectorModal" class="inspector-modal" style="display: none;">
+      <div class="inspector-backdrop" id="inspectorBackdrop"></div>
+      <div class="inspector-dialog">
+        <div class="inspector-header">
+          <div class="inspector-title-group">
+            <span class="inspector-badge" id="inspStageBadge">STAGE 01</span>
+            <h3 id="inspStageTitle">Canonical IQ Representation &amp; Validation</h3>
+          </div>
+          <button class="inspector-close" id="btnInspClose" title="Close Inspector">&times;</button>
+        </div>
+        <div class="inspector-body">
+          <div class="inspector-meta-row">
+            <div><b>Locked Status:</b> <span class="inst-sub-green" id="inspStatus">LOCKED</span></div>
+            <div><b>Target Endpoint:</b> <code id="inspEndpoint">/api/module1/validate</code></div>
+          </div>
+          <p class="inspector-desc" id="inspDesc">Validates raw I/Q samples, enforces non-destructive complex representations, and strips DC offsets.</p>
+          
+          <div class="inspector-actions">
+            <button id="btnRunStageSolo" class="btn-solo-run">
+              <span>▶</span> Execute Stage Solo
+            </button>
+            <button id="btnToggleInspJson" class="btn-toggle-json">
+              <span>{ }</span> Toggle Raw Backend JSON
+            </button>
+            <span id="inspSoloStatus" style="font-size:11px; color:var(--text-muted); align-self:center;"></span>
+          </div>
+
+          <div class="inspector-metrics-grid" id="inspMetricsGrid">
+            <!-- Dynamic metric cards injected here -->
+          </div>
+
+          <div class="inspector-json-wrapper" id="inspJsonWrapper" style="display: none;">
+            <div class="json-header">
+              <span>Backend REST Response Payload</span>
+              <button id="btnCopyInspJson" class="btn-copy-json">Copy JSON</button>
+            </div>
+            <pre id="inspJsonPre" class="inspector-json-pre">// Run pipeline or execute stage solo to view response payload</pre>
+          </div>
+        </div>
+      </div>
+    </div>
 
   </div>
 
