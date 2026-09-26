@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blind Signal Analysis System | SIH26147</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📡</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-wrapper">
+
+    <!-- ========================================================================
+         HEADER: SYSTEM IDENTITY & VERIFIED SCIENTIFIC STATUS
+         ======================================================================== -->
+    <header class="app-header">
+      <div class="brand-group">
+        <div class="brand-logo-badge">📡</div>
+        <div class="brand-title-box">
+          <h1>Blind Signal Analysis System <span class="sih-tag">SIH26147</span></h1>
+          <p class="brand-subtitle">Automated Blind Demodulation, Parameter Extraction &amp; Protocol Recovery Platform</p>
+        </div>
+      </div>
+      <div class="header-status-strip">
+        <div class="status-badge green" title="Comprehensive DSP Engine: Modules 1–10 Architecture">✓ DSP ENGINE: OPERATIONAL</div>
+        <div class="status-badge cyan">✓ 258/258 Tests Passed</div>
+        <button id="btnThemeToggle" class="btn-theme-toggle" title="Switch Theme">
+          <span id="themeToggleIcon">🌙</span> <span id="themeToggleText">Dark Mode</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ========================================================================
+         STEP 1: SIGNAL INGESTION & PIPELINE EXECUTION
+         ======================================================================== -->
+    <section class="control-card">
+      <div class="control-card-header">
+        <div class="step-indicator">
+          <span class="step-number">1</span>
+          <span class="step-title">Signal Ingestion &amp; Execution Control</span>
+        </div>
+        <div id="activeSignalLabel" class="active-signal-tag">
+          Loading signal vector...
+        </div>
+      </div>
+
+      <div class="control-grid">
+        <!-- Preset Selector -->
+        <div class="form-group">
+          <label class="form-label">Signal Source / Preset</label>
+          <select id="signalPresetSelect" class="form-select">
+            <option value="qpsk_1200" selected>📡 Tactical VHF QPSK Carrier (142.850 MHz, SNR 24 dB, 1200 Sa)</option>
+            <option value="qam16_1600">⚡ Avionics 16-QAM Wideband Grid (SNR 26 dB, 1600 Sa)</option>
+            <option value="psk8_1200">🎯 Deep-Space 8-PSK Phase Ring (SNR 24 dB, 1200 Sa)</option>
+            <option value="bpsk_1000">📻 Military BPSK Jam-Resistant Burst (SNR 20 dB, 1000 Sa)</option>
+            <option value="fsk_1200">🛰️ Continuous-Phase GFSK Telemetry (1200 Sa)</option>
+            <option value="radioml_128">🔬 RadioML 2016.10a Measured SDR Capture @ 18 dB (128 Sa)</option>
+            <option value="zero_power">⚠️ Zero-Power Noise (Rejection Test)</option>
+            <option value="dc_offset">⚠️ Pure DC Offset (Rejection Test)</option>
+          </select>
+        </div>
+
+        <!-- Sampling Rate (Optional) -->
+        <div class="form-group">
+          <label class="form-label">Sampling Rate Fs (Hz)</label>
+          <input type="number" id="inputFs" class="form-input" placeholder="e.g. 1000000 (Optional)" value="1000000">
+        </div>
+
+        <!-- Center Frequency (Optional) -->
+        <div class="form-group">
+          <label class="form-label">Center Freq Fc (Hz)</label>
+          <input type="number" id="inputFc" class="form-input" placeholder="e.g. 142850000 (Optional)" value="142850000">
+        </div>
+
+        <!-- Modulation Override -->
+        <div class="form-group">
+          <label class="form-label">Modulation Override</label>
+          <select id="selectModulation" class="form-select">
+            <option value="">AUTO (AMC Detection)</option>
+            <option value="QPSK" selected>QPSK</option>
+            <option value="BPSK">BPSK</option>
+            <option value="8PSK">8PSK</option>
+            <option value="QAM16">QAM16</option>
+            <option value="QAM64">QAM64</option>
+            <option value="GFSK">GFSK</option>
+            <option value="CPFSK">CPFSK</option>
+          </select>
+        </div>
+
+        <!-- Primary CTA: RUN ANALYSIS -->
+        <button id="btnRunPipeline" class="btn-primary-run">
+          <span>⚡</span> RUN COMPLETE ANALYSIS
+        </button>
+      </div>
+
+      <!-- File upload & tools row -->
+      <div class="secondary-actions-bar">
+        <label class="btn-secondary" style="cursor:pointer;">
+          <span>📂</span> Upload Custom Signal (.json / .iq / .wav)
+          <input type="file" id="fileUploadInput" accept=".json,.iq,.wav,.bin" style="display:none;">
+        </label>
+        <button id="btnReloadPreset" class="btn-secondary">
+          <span>🔄</span> Reset to Preset
+        </button>
+      </div>
+
+      <!-- Alert Banner -->
+      <div id="alertBanner" class="alert-banner"></div>
+    </section>
+
+    <!-- ========================================================================
+         STEP 2: RF LABORATORY INSTRUMENT TELEMETRY STRIP (BLACK & WHITE / SOBER)
+         ======================================================================== -->
+    <!-- ========================================================================
+         STEP 2: RF LABORATORY INSTRUMENT TELEMETRY STRIP (EXACT REFERENCE REPLICA)
+         ======================================================================== -->
+    <section class="telemetry-strip">
+      <!-- Card 1: Center Frequency -->
+      <div class="telemetry-card card-freq">
+        <div class="telemetry-card-header">
+          <span>EST. CENTER FREQ</span>
+          <span class="inst-badge-mint" id="telemetryAfcBadge"><span class="dot">●</span> AFC LOCKED</span>
+        </div>
+        <div class="telemetry-card-body">
+          <span class="inst-val-num" id="telemetryFcVal">142.850</span>
+          <span class="inst-unit-tag">MHz</span>
+          <span class="inst-sub-cyan" id="telemetryBandName">VHF Tactical Band</span>
+        </div>
+        <div class="inst-details-row">
+          <div class="inst-col-item">
+            <span>IF OFFSET: <b id="telemetryIfOffset">+120.00</b></span>
+            <span class="sub-lbl">kHz</span>
+          </div>
+          <div class="inst-col-item">
+            <span>BW: <b id="telemetryBw">2.15</b></span>
+            <span class="sub-lbl">MHz</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Sampling Rate -->
+      <div class="telemetry-card card-fs">
+        <div class="telemetry-card-header">
+          <span>SAMPLING RATE<br>(FS)</span>
+          <span class="inst-badge-sky" id="telemetryFsBadge">OVERSAMPLED<br>4x</span>
+        </div>
+        <div class="telemetry-card-body">
+          <span class="inst-val-num" id="telemetryFsVal">20.00</span>
+          <span class="inst-unit-tag">MSps</span>
+          <span class="inst-sub-gray">Decimation: 1:1</span>
+        </div>
+        <div class="inst-details-row">
+          <div class="inst-col-item">
+            <span>NYQUIST BW: <b id="telemetryNyquist">10.00</b></span>
+            <span class="sub-lbl">MHz</span>
+          </div>
+          <div class="inst-col-item">
+            <span>FPGA FIFO:</span>
+            <b class="ok-green">OK</b>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 3: Dynamic Range / SNR -->
+      <div class="telemetry-card card-snr">
+        <div class="telemetry-card-header">
+          <span>DYNAMIC RANGE / SNR</span>
+          <span class="inst-badge-sky" id="telemetrySnrBadge">HI-FIDELITY</span>
+        </div>
+        <div class="telemetry-card-body">
+          <span class="inst-val-num" id="telemetrySnrVal">84.2</span>
+          <span class="inst-unit-tag">dB FS</span>
+          <span class="inst-sub-green" id="telemetrySinadVal">+28.4 dB SINAD</span>
+        </div>
+        <div class="inst-details-row">
+          <div class="inst-col-item">
+            <span>NOISE FLOOR: <b id="telemetryNoiseFloor">-108.4</b></span>
+            <span class="sub-lbl">dBm</span>
+          </div>
+          <div class="inst-col-item">
+            <span>ENOB: <b id="telemetryEnob">13.8</b></span>
+            <span class="sub-lbl">Bits</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 4: Energy Detector -->
+      <div class="telemetry-card card-energy">
+        <div class="telemetry-card-header">
+          <span>ENERGY DETECTOR</span>
+          <span class="inst-badge-amber" id="telemetryEnergyBadge"><span class="dot">●</span> ACTIVE EMITTER</span>
+        </div>
+        <div class="telemetry-card-body">
+          <span class="inst-val-num amber" id="telemetryDeltaVal">+14.6</span>
+          <span class="inst-unit-tag amber">dB Delta</span>
+          <span class="inst-sub-gray">P_FA: 10^-6</span>
+        </div>
+        <div class="inst-details-row">
+          <div class="inst-col-item">
+            <span>THRESHOLD: <b id="telemetryThreshold">+6.0 dB</b></span>
+          </div>
+          <div class="inst-col-item">
+            <span>BURST <b id="telemetryBurstState">BURST #04</b></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================
+         STEP 3: LABORATORY POWER SPECTRAL DENSITY (PSD / FFT)
+         ======================================================================== -->
+    <section class="psd-instrument-card">
+      <div class="psd-instrument-header">
+        <div class="psd-title-group">
+          <span class="psd-main-title"><span>📊</span> POWER SPECTRAL DENSITY (PSD / FFT)</span>
+          <div class="psd-chips-group">
+            <span class="psd-chip">4096-PT FFT</span>
+            <span class="psd-chip" id="psdSpanChip">SPAN: 10 MHz</span>
+            <span class="psd-chip">RBW: 4.88 kHz</span>
+            <span class="psd-chip">WIN: BLACKMAN-HARRIS</span>
+          </div>
+        </div>
+        <div class="psd-toolbar">
+          <button class="psd-btn active" id="btnPeakTrace">PEAK TRACE</button>
+          <button class="psd-btn" id="btnAvgTrace">AVG (EMA: 16)</button>
+          <button class="psd-btn" id="btnAutoScale">AUTO-SCALE</button>
+        </div>
+      </div>
+
+      <div class="psd-canvas-wrapper">
+        <div class="psd-hud-marker" id="psdHudMarker">
+          <span class="hud-marker-dot"></span>
+          <span>Marker 1: PEAK <b id="markerPeakVal">-18.2 dBFS</b> @ <b id="markerFreqVal">142.850 MHz</b> | OBW: <b id="markerObwVal">1.75 MHz</b> | Spur Suppr: <b id="markerSpurVal">-62.0 dB</b></span>
+        </div>
+        <canvas id="psdCanvas"></canvas>
+      </div>
+
+      <div class="psd-freq-axis">
+        <span id="freqTick1">139.850 MHz</span>
+        <span id="freqTick2">140.850 MHz</span>
+        <span id="freqTick3">141.850 MHz</span>
+        <span class="center-freq-chip" id="freqTickCenter">Fc: 142.850 MHz (CENTER)</span>
+        <span id="freqTick5">143.850 MHz</span>
+        <span id="freqTick6">144.850 MHz</span>
+        <span id="freqTick7">145.850 MHz</span>
+      </div>
+    </section>
+
+    <!-- ========================================================================
+         STEP 4: COMPANION SIGNAL VISUALIZERS (WAVEFORM & CONSTELLATIONS)
+         ======================================================================== -->
+    <section class="companion-plots-grid">
+      <!-- Plot 1: Time Domain Waveform -->
+      <div class="plot-card">
+        <div class="plot-card-header">
+          <span class="plot-title"><span>📈</span> Time-Domain Waveform</span>
+          <span class="plot-badge" id="waveformSampleBadge">1200 Samples</span>
+        </div>
+        <div class="canvas-container">
+          <canvas id="waveformCanvas"></canvas>
+        </div>
+        <div class="plot-footer">
+          <div>CHANNELS: <span class="val">I(t) [White] &amp; Q(t) [Muted]</span></div>
+          <div>NORM: <span class="val">Unit Variance</span></div>
+        </div>
+      </div>
+
+      <!-- Plot 2: Raw Signal Constellation -->
+      <div class="plot-card">
+        <div class="plot-card-header">
+          <span class="plot-title"><span>🎯</span> Raw Constellation (I vs Q)</span>
+          <span class="plot-badge">Raw Samples</span>
+        </div>
+        <div class="canvas-container">
+          <canvas id="rawConstellationCanvas"></canvas>
+        </div>
+        <div class="plot-footer">
+          <div>POINTS: <span class="val" id="rawConstellationCount">—</span></div>
+          <div>STATE: <span class="val" id="rawCarrierState">Unsynchronized</span></div>
+        </div>
+      </div>
+
+      <!-- Plot 3: Synchronized Symbol Constellation -->
+      <div class="plot-card">
+        <div class="plot-card-header">
+          <span class="plot-title"><span>✨</span> Synchronized Symbol Constellation</span>
+          <span class="plot-badge" id="recoveredSymbolBadge">Awaiting Run</span>
+        </div>
+        <div class="canvas-container">
+          <canvas id="recoveredConstellationCanvas"></canvas>
+        </div>
+        <div class="plot-footer">
+          <div>RECOVERED: <span class="val" id="recoveredSymbolCount">0 Syms</span></div>
+          <div>LOCK: <span class="val" id="costasLockStatus">Awaiting Execution</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================
+         STEP 2: SEQUENTIAL SIGNAL PROCESSING STAGES CHECKLIST
+         ======================================================================== -->
+    <section class="pipeline-checklist-card">
+      <div class="control-card-header" style="border:none; padding-bottom:0;">
+        <div class="step-indicator">
+          <span class="step-number">2</span>
+          <span class="step-title">Sequential Signal Processing Stages</span>
+        </div>
+        <div id="overallStatusBadge" class="status-badge cyan">STANDBY</div>
+      </div>
+
+      <div class="checklist-strip">
+        <div class="stage-box">
+          <span class="stage-num">01</span>
+          <span class="stage-name">Canonical IQ</span>
+          <span id="badgeM1" class="stage-status-badge not_executed">STANDBY</span>
+        </div>
+        <div class="stage-box">
+          <span class="stage-num">02</span>
+          <span class="stage-name">Observations</span>
+          <span id="badgeM2" class="stage-status-badge not_executed">STANDBY</span>
+        </div>
+        <div class="stage-box">
+          <span class="stage-num">03</span>
+          <span class="stage-name">Modulation AMC</span>
+          <span id="badgeM3" class="stage-status-badge not_executed">STANDBY</span>
+        </div>
+        <div class="stage-box">
+          <span class="stage-num">04</span>
+          <span class="stage-name">Parameters</span>
+          <span id="badgeM4" class="stage-status-badge not_executed">STANDBY</span>
+        </div>
+        <div class="stage-box">
+          <span class="stage-num">05</span>
+          <span class="stage-name">Carrier Sync</span>
+          <span id="badgeM5" class="stage-status-badge not_executed">STANDBY</span>
+        </div>
+        <div class="stage-box">
+          <span class="stage-num">06</span>
+          <span class="stage-name">SNR Quality</span>
+          <span id="badgeM6" class="stage-status-badge not_executed">STANDBY</span>
+        </div>
+        <div class="stage-box">
+          <span class="stage-num">07</span>
+          <span class="stage-name">Soft Bits</span>
+          <span id="badgeM7" class="stage-status-badge not_executed">STANDBY</span>
+        </div>
+        <div class="stage-box">
+          <span class="stage-num">08</span>
+          <span class="stage-name">Blind FEC</span>
+          <span id="badgeM8" class="stage-status-badge not_executed">STANDBY</span>
+        </div>
+        <div class="stage-box">
+          <span class="stage-num">09</span>
+          <span class="stage-name">Frame Structure</span>
+          <span id="badgeM9" class="stage-status-badge not_executed">STANDBY</span>
+        </div>
+        <div class="stage-box">
+          <span class="stage-num">10</span>
+          <span class="stage-name">CRC &amp; Interleave</span>
+          <span id="badgeM10" class="stage-status-badge not_executed">STANDBY</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================
+         STEP 3: DETAILED ENGINEERING RESULTS DASHBOARD
+         ======================================================================== -->
+    <section class="results-dashboard-card">
+      <div class="control-card-header" style="border-bottom: 1px solid var(--border-card); padding-bottom: 12px;">
+        <div class="step-indicator">
+          <span class="step-number">3</span>
+          <span class="step-title">Telemetry &amp; Protocol Recovery Breakdown</span>
+        </div>
+        <div class="header-status-strip">
+          <span class="status-badge green">✓ 6 Analysis Domains Synchronized</span>
+        </div>
+      </div>
+
+      <div class="dashboard-grid">
+        <!-- Card A: Executive Summary -->
+        <div class="result-card card-accent-blue">
+          <div class="result-card-header">
+            <span>EXECUTIVE CLASSIFICATION SUMMARY</span>
+            <span id="resExecMod" class="status-badge cyan" style="padding:2px 7px;">UNKNOWN</span>
+          </div>
+          <div class="metric-row"><span class="metric-key">Pipeline Status:</span><span class="metric-val" id="resStatusVal">Awaiting Run</span></div>
+          <div class="metric-row"><span class="metric-key">Estimated SNR:</span><span class="metric-val" id="resSnrVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">Baud Rate (Rs):</span><span class="metric-val" id="resBaudVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">Top FEC Code:</span><span class="metric-val" id="resFecVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">Detected CRC:</span><span class="metric-val" id="resCrcVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">Interleaver Width:</span><span class="metric-val" id="resInterleaverVal">—</span></div>
+        </div>
+
+        <!-- Card C: Modulation AMC -->
+        <div class="result-card card-accent-mint">
+          <div class="result-card-header">
+            <span>AUTOMATIC MODULATION RECOGNITION (AMC)</span>
+            <span class="status-badge green" style="padding:2px 7px;">69.00% Benchmark</span>
+          </div>
+          <div class="metric-row"><span class="metric-key">RF Engine A (24 Features):</span><span class="metric-val" id="amcRfVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">CNN Engine B (Raw IQ):</span><span class="metric-val" id="amcCnnVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">Model Weights Status:</span><span class="metric-val" id="amcWeightsVal">HONEST REPORT</span></div>
+          <div class="metric-row"><span class="metric-key">Fusion Status:</span><span class="metric-val" style="color:var(--accent-amber);">NOT_YET_VALIDATED</span></div>
+          <div class="metric-row"><span class="metric-key">Calibrated Confidence:</span><span class="metric-val">NOT_YET_DEFINED</span></div>
+        </div>
+
+        <!-- Card D: Parameter Estimation -->
+        <div class="result-card card-accent-blue">
+          <div class="result-card-header">
+            <span>CARRIER &amp; SYMBOL PARAMETERS</span>
+            <span class="status-badge cyan" style="padding:2px 7px;">Cyclic Ciblat</span>
+          </div>
+          <div class="metric-row"><span class="metric-key">Symbol Rate:</span><span class="metric-val" id="paramRsVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">Samples / Symbol (SPS):</span><span class="metric-val" id="paramSpsVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">Carrier Offset (CFO):</span><span class="metric-val" id="paramCfoVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">Occupied Bandwidth:</span><span class="metric-val" id="paramBwVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">FSK Frequency Separation:</span><span class="metric-val" id="paramFskVal">N/A (PSK/QAM)</span></div>
+        </div>
+
+        <!-- Card E: Synchronization & Bitstream -->
+        <div class="result-card card-accent-mint">
+          <div class="result-card-header">
+            <span>SYNCHRONIZED BITSTREAM DEMAPPING</span>
+            <span id="badgeBitCount" class="status-badge green" style="padding:2px 7px;">0 Bits</span>
+          </div>
+          <div class="metric-row"><span class="metric-key">CFO Compensated:</span><span class="metric-val" id="recCfoVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">Costas Phase Estimate:</span><span class="metric-val" id="recPhaseVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">Gardner Timing Offset:</span><span class="metric-val" id="recTimingVal">—</span></div>
+          <div class="bitstream-container" id="demodBitStreamBox">// No demodulated bits available</div>
+        </div>
+
+        <!-- Card G: Soft Bits & Reliability -->
+        <div class="result-card card-accent-purple">
+          <div class="result-card-header">
+            <span>SOFT-DECISION DEMAPPING &amp; LLR</span>
+            <span class="status-badge purple" style="padding:2px 7px;">Exact LLR</span>
+          </div>
+          <div class="metric-row"><span class="metric-key">Metric Type:</span><span class="metric-val" id="softMetricTypeVal">LLR (Exact Gaussian)</span></div>
+          <div class="metric-row"><span class="metric-key">Hard Decision Agreement:</span><span class="metric-val" id="softAgreementVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">Noise Parameter N0:</span><span class="metric-val" id="softN0Val">—</span></div>
+          <div class="bitstream-container" id="softStreamBox">// Soft values awaiting execution</div>
+        </div>
+
+        <!-- Card I/J: Framing, GF(2) & CRC -->
+        <div class="result-card card-accent-amber">
+          <div class="result-card-header">
+            <span>FRAME STRUCTURE &amp; CRC INTEGRITY</span>
+            <span class="status-badge green" style="padding:2px 7px;">GF(2) Algebra</span>
+          </div>
+          <div class="metric-row"><span class="metric-key">Frame Period P:</span><span class="metric-val" id="framingPeriodVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">Frame Phase φ*:</span><span class="metric-val" id="framingPhaseVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">GF(2) Parity Relations:</span><span class="metric-val" id="gf2RelationsVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">CRC Candidate:</span><span class="metric-val" id="crcPolyVal">—</span></div>
+          <div class="metric-row"><span class="metric-key">CRC Acceptance Rate:</span><span class="metric-val" id="crcRateVal">—</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================
+         STEP 5: AUTHORITATIVE REPORT GENERATION BAR
+         ======================================================================== -->
+    <section class="report-card">
+      <div class="report-info">
+        <h3><span>📋</span> Authoritative Engineering Audit Report</h3>
+        <p>Generated directly by the backend report generator with full parameter traceability and cross-validation checksums.</p>
+      </div>
+      <div class="report-btn-group">
+        <button id="btnViewHtmlReport" class="btn-report primary">
+          <span>👁️</span> View HTML Report
+        </button>
+        <button id="btnDownloadHtml" class="btn-report">Download HTML</button>
+        <button id="btnDownloadMd" class="btn-report">Download Markdown</button>
+        <button id="btnDownloadJson" class="btn-report">Download JSON</button>
+      </div>
+    </section>
+
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
