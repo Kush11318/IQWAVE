@@ -33,6 +33,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.middleware("http")
+async def normalize_api_path(request, call_next):
+    # When deployed on Vercel or behind reverse proxies, path may arrive stripped of '/api'
+    # or passed through headers like 'x-matched-path'
+    orig_path = request.headers.get("x-matched-path") or request.headers.get("x-vercel-matched-path")
+    if orig_path and orig_path.startswith("/api/"):
+        request.scope["path"] = orig_path
+    else:
+        path = request.scope.get("path", "")
+        if not path.startswith("/api/") and (path.startswith("/pipeline") or path.startswith("/module")):
+            request.scope["path"] = f"/api{path}"
+    response = await call_next(request)
+    return response
+
 # Register API routes
 app.include_router(module1_router)
 app.include_router(module2_router)
@@ -45,6 +59,24 @@ app.include_router(module8_router)
 app.include_router(module9_router)
 app.include_router(module10_router)
 app.include_router(pipeline_router)
+
+@app.get("/api")
+@app.get("/api/")
+@app.get("/api/index.py")
+def api_root():
+    return {
+        "status": "ONLINE",
+        "service": "IQWAVE Blind Signal Analysis Backend",
+        "version": "1.0.0",
+        "endpoints": {
+            "status": "/api/pipeline/status",
+            "run": "/api/pipeline/run",
+            "fixture": "/api/pipeline/fixture",
+            "upload": "/api/pipeline/upload",
+            "report": "/api/pipeline/report"
+        }
+    }
+
 
 
 # Mount frontend static directory if exists

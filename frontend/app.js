@@ -18,6 +18,72 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   let currentPipelineResult = null;
 
+  // --------------------------------------------------------------------------
+  // API URL Resolution & Resilient Client Network Layer
+  // --------------------------------------------------------------------------
+  // Automatically detects if the frontend is served from a static dev server
+  // (e.g. VS Code Live Server on port 5500, Vite on 5173, React on 3000, or file://).
+  // If so, routes requests to the local backend at http://127.0.0.1:8000.
+  // When served by FastAPI directly or deployed in production (e.g. Vercel),
+  // uses relative URLs. Also features auto-fallback to http://127.0.0.1:8000
+  // if a relative API call yields 404 or connection failure.
+  function getBackendBase() {
+    if (typeof window === 'undefined' || !window.location) return '';
+    if (window.__API_BASE__) return window.__API_BASE__;
+    try {
+      const stored = localStorage.getItem('IQWAVE_API_BASE');
+      if (stored) return stored;
+    } catch (_) {}
+    const port = window.location.port;
+    const hostname = window.location.hostname;
+    const isLocalDevHost = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '';
+    const isStaticDev = (
+      window.location.protocol === 'file:' ||
+      (isLocalDevHost && port !== '8000' && port !== '')
+    );
+    return isStaticDev ? 'http://127.0.0.1:8000' : '';
+  }
+
+  let API_BASE = getBackendBase();
+
+  function getApiUrl(endpoint) {
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    return `${API_BASE}${cleanEndpoint}`;
+  }
+
+  async function apiFetch(endpoint, options = {}) {
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const primaryUrl = `${API_BASE}${cleanEndpoint}`;
+    try {
+      const res = await fetch(primaryUrl, options);
+      if (res.ok) return res;
+      // If 404 or 502/503/504 on relative/dev origin, attempt local backend fallback
+      if ((res.status === 404 || res.status >= 500) && !primaryUrl.startsWith('http://127.0.0.1:8000') && !primaryUrl.startsWith('http://localhost:8000')) {
+        try {
+          const fallbackUrl = `http://127.0.0.1:8000${cleanEndpoint}`;
+          const fallbackRes = await fetch(fallbackUrl, options);
+          if (fallbackRes.ok) {
+            API_BASE = 'http://127.0.0.1:8000';
+            return fallbackRes;
+          }
+        } catch (_) {}
+      }
+      return res;
+    } catch (err) {
+      if (!primaryUrl.startsWith('http://127.0.0.1:8000') && !primaryUrl.startsWith('http://localhost:8000')) {
+        try {
+          const fallbackUrl = `http://127.0.0.1:8000${cleanEndpoint}`;
+          const fallbackRes = await fetch(fallbackUrl, options);
+          if (fallbackRes.ok) {
+            API_BASE = 'http://127.0.0.1:8000';
+            return fallbackRes;
+          }
+        } catch (_) {}
+      }
+      throw err;
+    }
+  }
+
   // UI Element References
   const activeSignalLabel = document.getElementById('activeSignalLabel');
   const signalPresetSelect = document.getElementById('signalPresetSelect');
@@ -210,9 +276,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================================================
   // 1. SIGNAL INGESTION & PRESET LOADING
   // ============================================================================
-  // ============================================================================
-  // 1. SIGNAL INGESTION & PRESET LOADING
-  // ============================================================================
   async function loadPresetFixture(presetKey) {
     if (presetKey === 'zero_power') {
       loadZeroPower();
@@ -223,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     try {
-      const res = await fetch(`/api/pipeline/fixture?preset=${presetKey}`);
+      const res = await apiFetch(`/api/pipeline/fixture?preset=${presetKey}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data && data.i) {
@@ -413,7 +476,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (inputFc && inputFc.value) formData.append('center_frequency', inputFc.value);
       try {
         setLoading(true);
-        const res = await fetch('/api/pipeline/upload', { method: 'POST', body: formData });
+        const res = await apiFetch('/api/pipeline/upload', { method: 'POST', body: formData });
         const data = await res.json();
         currentPipelineResult = data;
         renderPipelineResult(data);
@@ -454,7 +517,7 @@ document.addEventListener('DOMContentLoaded', () => {
         input_type: currentSignal.sourceName || 'CUSTOM_CANONICAL_IQ'
       };
 
-      const res = await fetch('/api/pipeline/run', {
+      const res = await apiFetch('/api/pipeline/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -1354,7 +1417,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     try {
-      const res = await fetch(`/api/pipeline/report?format=${format}`, {
+      const res = await apiFetch(`/api/pipeline/report?format=${format}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(currentPipelineResult)
@@ -1683,7 +1746,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function checkBackendHealth() {
     const t0 = performance.now();
     try {
-      const res = await fetch('/api/pipeline/status');
+      const res = await apiFetch('/api/pipeline/status');
       const rtt = Math.round(performance.now() - t0);
       if (res.ok) {
         const data = await res.json();
@@ -1758,7 +1821,7 @@ document.addEventListener('DOMContentLoaded', () => {
       inspSoloStatus.textContent = `Calling ${cfg.endpoint}...`;
 
       const payload = cfg.buildPayload(currentSignal);
-      const res = await fetch(cfg.endpoint, {
+      const res = await apiFetch(cfg.endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
