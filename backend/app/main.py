@@ -35,15 +35,11 @@ app.add_middleware(
 
 @app.middleware("http")
 async def normalize_api_path(request, call_next):
-    # When deployed on Vercel or behind reverse proxies, path may arrive stripped of '/api'
-    # or passed through headers like 'x-matched-path'
-    orig_path = request.headers.get("x-matched-path") or request.headers.get("x-vercel-matched-path")
-    if orig_path and orig_path.startswith("/api/"):
-        request.scope["path"] = orig_path
-    else:
-        path = request.scope.get("path", "")
-        if not path.startswith("/api/") and (path.startswith("/pipeline") or path.startswith("/module")):
-            request.scope["path"] = f"/api{path}"
+    # When deployed on Vercel or behind reverse proxies, normalize if '/api' was stripped
+    # Note: Do NOT inspect x-matched-path here, as Vercel sets x-matched-path to the destination (/api/index)
+    path = request.scope.get("path", "")
+    if not path.startswith("/api/") and (path.startswith("/pipeline") or path.startswith("/module")):
+        request.scope["path"] = f"/api{path}"
     response = await call_next(request)
     return response
 

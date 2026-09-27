@@ -27,6 +27,19 @@ document.addEventListener('DOMContentLoaded', () => {
   // When served by FastAPI directly or deployed in production (e.g. Vercel),
   // uses relative URLs. Also features auto-fallback to http://127.0.0.1:8000
   // if a relative API call yields 404 or connection failure.
+  function checkIsLocalDevHost() {
+    if (typeof window === 'undefined' || !window.location) return false;
+    const hostname = window.location.hostname;
+    return (
+      window.location.protocol === 'file:' ||
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === ''
+    );
+  }
+
+  const isLocalDevHost = checkIsLocalDevHost();
+
   function getBackendBase() {
     if (typeof window === 'undefined' || !window.location) return '';
     if (window.__API_BASE__) return window.__API_BASE__;
@@ -35,12 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (stored) return stored;
     } catch (_) {}
     const port = window.location.port;
-    const hostname = window.location.hostname;
-    const isLocalDevHost = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '';
-    const isStaticDev = (
-      window.location.protocol === 'file:' ||
-      (isLocalDevHost && port !== '8000' && port !== '')
-    );
+    const isStaticDev = isLocalDevHost && port !== '8000' && port !== '';
     return isStaticDev ? 'http://127.0.0.1:8000' : '';
   }
 
@@ -57,8 +65,9 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const res = await fetch(primaryUrl, options);
       if (res.ok) return res;
-      // If 404 or 502/503/504 on relative/dev origin, attempt local backend fallback
-      if ((res.status === 404 || res.status >= 500) && !primaryUrl.startsWith('http://127.0.0.1:8000') && !primaryUrl.startsWith('http://localhost:8000')) {
+      // If 404 or 5xx on a LOCAL dev server (e.g. port 5500), attempt fallback to local 8000
+      // NEVER attempt loopback from remote domains (e.g. Vercel) to avoid CORS loopback denial
+      if (isLocalDevHost && (res.status === 404 || res.status >= 500) && !primaryUrl.startsWith('http://127.0.0.1:8000') && !primaryUrl.startsWith('http://localhost:8000')) {
         try {
           const fallbackUrl = `http://127.0.0.1:8000${cleanEndpoint}`;
           const fallbackRes = await fetch(fallbackUrl, options);
@@ -70,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       return res;
     } catch (err) {
-      if (!primaryUrl.startsWith('http://127.0.0.1:8000') && !primaryUrl.startsWith('http://localhost:8000')) {
+      if (isLocalDevHost && !primaryUrl.startsWith('http://127.0.0.1:8000') && !primaryUrl.startsWith('http://localhost:8000')) {
         try {
           const fallbackUrl = `http://127.0.0.1:8000${cleanEndpoint}`;
           const fallbackRes = await fetch(fallbackUrl, options);
