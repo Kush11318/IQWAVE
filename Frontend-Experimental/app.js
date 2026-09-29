@@ -33,7 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let frozenWaveformData = null;
     let frozenRawConstData = null;
     let frozenRecConstData = null;
-    let isBackendLive = true;
+    let isBackendLive = (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"));
 
     const state = {
         preset: "qpsk_1200",
@@ -459,25 +459,27 @@ document.addEventListener("DOMContentLoaded", () => {
         hideAlert();
         let data = null;
 
-        // Tier 1: Live Serverless FastAPI Backend
+        // Tier 1: Static CDN Pre-rendered JSON Fixture (Instantaneous <5ms, completely immune to backend/cold-start latency)
         try {
-            const res = await fetch("/api/experimental/pipeline/fixture?preset=" + presetKey);
-            if (res.ok) {
-                data = await res.json();
+            const staticRes = await fetch("/fixtures/" + presetKey + ".json");
+            if (staticRes.ok) {
+                data = await staticRes.json();
             }
-        } catch (apiErr) {
-            console.warn("Live API fixture fetch failed, trying static CDN fixture:", apiErr);
+        } catch (staticErr) {
+            // Static fixture not available, fallback to live API
         }
 
-        // Tier 2: Static CDN Pre-rendered JSON Fixture (Instantaneous <10ms, immune to Python cold starts)
+        // Tier 2: Live FastAPI Backend (Active when running locally or if static is missing)
         if (!data || !data.i) {
-            try {
-                const staticRes = await fetch("/fixtures/" + presetKey + ".json");
-                if (staticRes.ok) {
-                    data = await staticRes.json();
+            if (isBackendLive) {
+                try {
+                    const res = await fetch("/api/experimental/pipeline/fixture?preset=" + presetKey);
+                    if (res.ok) {
+                        data = await res.json();
+                    }
+                } catch (apiErr) {
+                    // API fixture not available, fallback to client synthesis
                 }
-            } catch (staticErr) {
-                console.warn("Static CDN fixture fetch failed:", staticErr);
             }
         }
 

@@ -10,6 +10,16 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
     <link rel="alternate icon" href="/favicon.ico"/>
+    <script>
+        // Suppress Tailwind Play CDN notice in developer console
+        (function() {
+            const _w = console.warn;
+            console.warn = function(...args) {
+                if (args[0] && typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com should not be used in production')) return;
+                _w.apply(console, args);
+            };
+        })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script id="tailwind-config">
         tailwind.config = {
@@ -1502,6 +1512,6 @@
         </div>
     </div>
 
-    <script src="/app.js"></script>
+    <script src="/app.js?v=2.5.0"></script>
 </body>
 </html>
