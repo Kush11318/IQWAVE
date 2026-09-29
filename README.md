@@ -1,7 +1,7 @@
 <div align="center">
 
-# 📡 IQWAVE
-### Advanced Blind Signal Analysis & Autonomous Demodulation Platform
+# 📡 DAWC
+### Digital Automated Waveform Classifier & Autonomous Protocol Recovery (SIH26147)
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-009688.svg?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)

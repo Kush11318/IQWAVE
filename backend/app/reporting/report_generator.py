@@ -470,8 +470,8 @@ class EngineeringReportGenerator:
 <body>
   <div class="container">
     <header>
-      <h1>Blind Signal Analysis System</h1>
-      <p class="subtitle">Modules 1–10 End-to-End Scientific Engineering Report | SIH26147</p>
+      <h1>DAWC — Digital Automated Waveform Classifier</h1>
+      <p class="subtitle">Blind Signal Analysis System (SIH26147) — Modules 1–10 Engineering Report</p>
     </header>
 
     <!-- 1. Executive Summary -->
@@ -682,7 +682,8 @@ class EngineeringReportGenerator:
         rej_li = "\n".join([f"- {x}" for x in s12["REJECTED_OUT_OF_SCOPE"]])
         unk_li = "\n".join([f"- {x}" for x in s12["UNKNOWN"]])
 
-        return f"""# FINAL BLIND SIGNAL ANALYSIS ENGINEERING REPORT (MODULES 1–10)
+        return f"""# DAWC — DIGITAL AUTOMATED WAVEFORM CLASSIFIER
+### FINAL BLIND SIGNAL ANALYSIS ENGINEERING REPORT (MODULES 1–10 | SIH26147)
 
 ## 1. Executive Summary
 - **Pipeline Execution Status:** `{s1['pipeline_execution_status']}`

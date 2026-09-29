@@ -19,8 +19,8 @@ from backend.app.api.routes_module10 import router as module10_router
 from backend.app.api.routes_pipeline import router as pipeline_router, experimental_router
 
 app = FastAPI(
-    title="Blind Signal Analysis System (SIH26147)",
-    description="Automated model for analysis of .IQ and .wav files along with signal parameter extraction.",
+    title="DAWC — Digital Automated Waveform Classifier (SIH26147)",
+    description="Automated model for analysis of .IQ and .wav files along with signal parameter extraction, digital waveform classification, and blind protocol recovery.",
     version="1.0.0"
 )
 
@@ -62,7 +62,7 @@ app.include_router(experimental_router)
 def api_root():
     return {
         "status": "ONLINE",
-        "service": "IQWAVE Blind Signal Analysis Backend",
+        "service": "DAWC — Digital Automated Waveform Classifier Backend",
         "version": "1.0.0",
         "endpoints": {
             "status": "/api/pipeline/status",

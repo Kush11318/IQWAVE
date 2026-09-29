@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Blind Signal Analysis System | SIH26147</title>
+  <title>DAWC — Digital Automated Waveform Classifier | SIH26147</title>
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📡</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,13 +27,16 @@
       <div class="brand-group">
         <div class="brand-logo-badge">📡</div>
         <div class="brand-title-box">
-          <h1>Blind Signal Analysis System <span class="sih-tag">SIH26147</span></h1>
-          <p class="brand-subtitle">Automated Blind Demodulation, Parameter Extraction &amp; Protocol Recovery Platform</p>
+          <h1>DAWC <span style="font-weight: 500; font-size: 1.1rem; opacity: 0.9;">— Digital Automated Waveform Classifier</span> <span class="sih-tag">SIH26147</span></h1>
+          <p class="brand-subtitle">Blind Signal Analysis System — Autonomous Demodulation, Parameter Extraction &amp; Protocol Recovery Platform</p>
         </div>
       </div>
       <div class="header-status-strip">
         <div id="headerDspStatus" class="status-badge green" title="Comprehensive DSP Engine: Modules 1–10 Architecture">✓ DSP ENGINE: OPERATIONAL</div>
         <div class="status-badge cyan">✓ 258/258 Tests Passed</div>
+        <a href="/experimental" class="status-badge" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 0.78rem; border: 1.5px solid #00c853; color: #00c853; background: rgba(0, 200, 83, 0.08); padding: 4px 10px; border-radius: 6px; letter-spacing: 0.4px;">
+          <span>⚡</span> <span>SPECTRA LAB</span>
+        </a>
         <button id="btnThemeToggle" class="btn-theme-toggle" title="Switch Theme">
           <span id="themeToggleIcon">🌙</span> <span id="themeToggleText">Dark Mode</span>
         </button>
@@ -80,6 +83,8 @@
             <option value="bpsk_1000">📻 Military BPSK Jam-Resistant Burst (1000 Sa)</option>
             <option value="fsk_1200">🛰️ Continuous-Phase GFSK Telemetry (1200 Sa)</option>
             <option value="radioml_128">🔬 RadioML 2016.10a Measured SDR Capture (128 Sa)</option>
+            <option value="radar_lfm_1200">🛸 RadChar: Tactical LFM Radar Chirp (1200 Sa)</option>
+            <option value="radar_barker_1300">🎯 RadChar: X-Band Barker-13 Coded Radar Pulse (1300 Sa)</option>
             <option value="zero_power">⚠️ Zero-Power Noise (Rejection Test)</option>
             <option value="dc_offset">⚠️ Pure DC Offset (Rejection Test)</option>
           </select>
