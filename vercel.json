@@ -1,9 +1,16 @@
 {
   "version": 2,
+  "env": {
+    "PYTHONPATH": "."
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
       "destination": "/api/index.py"
+    },
+    {
+      "source": "/fixtures/(.*)",
+      "destination": "/fixtures/$1"
     },
     {
       "source": "/favicon.ico",

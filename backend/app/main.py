@@ -35,10 +35,27 @@ app.add_middleware(
 
 @app.middleware("http")
 async def normalize_api_path(request, call_next):
-    # When deployed on Vercel or behind reverse proxies, normalize if '/api' was stripped
+    # When deployed on Vercel or behind reverse proxies, normalize paths
     path = request.scope.get("path", "")
+
+    # Strip any serverless file prefix (/api/index.py, /index.py, /api/index, /index)
+    for prefix in ["/api/index.py", "/index.py", "/api/index", "/index"]:
+        if path.startswith(prefix):
+            path = path[len(prefix):]
+            break
+
+    if not path.startswith("/"):
+        path = "/" + path
+
+    # If stripped path is empty or root
+    if path in ["", "/"]:
+        path = "/api"
+
+    # Ensure /api prefix if routed directly to submodule or experimental
     if not path.startswith("/api/") and (path.startswith("/pipeline") or path.startswith("/module") or path.startswith("/experimental/pipeline")):
-        request.scope["path"] = f"/api{path}"
+        path = f"/api{path}"
+
+    request.scope["path"] = path
     response = await call_next(request)
     return response
 
