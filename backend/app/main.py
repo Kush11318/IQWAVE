@@ -97,6 +97,8 @@ app.include_router(experimental_router)
 @app.get("/api")
 @app.get("/api/")
 @app.get("/api/index.py")
+@app.get("/api/index")
+@app.get("/index")
 def api_root():
     return {
         "status": "ONLINE",
@@ -117,7 +119,9 @@ def api_root():
 @app.post("/api")
 @app.post("/api/")
 @app.post("/api/index.py")
+@app.post("/api/index")
 @app.post("/index.py")
+@app.post("/index")
 def api_root_post(req: PipelineRunRequest):
     return post_run_pipeline(req)
 
