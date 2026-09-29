@@ -67,6 +67,20 @@ FEATURE_NAMES_24: List[str] = [
     "c42_norm"
 ]
 
+NEW_FEATURE_NAMES_8: List[str] = [
+    "c60_norm",
+    "c63_norm",
+    "circular_skewness",
+    "circular_kurtosis",
+    "peak_to_avg_power_ratio",
+    "spectral_flatness",
+    "cyclic_freq_peak_ratio",
+    "norm_phase_variance"
+]
+
+FEATURE_NAMES_32: List[str] = FEATURE_NAMES_24 + NEW_FEATURE_NAMES_8
+FEATURE_NAMES: List[str] = FEATURE_NAMES_32
+
 MODULATION_CLASSES: List[str] = [
     "BPSK",
     "QPSK",
@@ -78,15 +92,22 @@ MODULATION_CLASSES: List[str] = [
 ]
 
 
-def extract_24_features(
+def extract_features(
     iq_signal: np.ndarray,
     module2_observation: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Optional[float]]:
-    """Extract the complete 24-dimensional feature vector.
+    """Extract the complete 32-dimensional research-backed feature vector.
 
     Reuses Module 2 observations if already computed to avoid redundant DSP.
+    Includes the 24 base features plus 8 discriminators:
+    - c60_norm, c63_norm (6th-order cumulants for QAM64 vs QAM16 / PSK vs QAM)
+    - circular_skewness, circular_kurtosis (phase distribution for FSK / PSK)
+    - peak_to_avg_power_ratio (PAPR)
+    - spectral_flatness (Wiener entropy)
+    - cyclic_freq_peak_ratio (cyclostationary symbol rate peak strength)
+    - norm_phase_variance (CFO-robust phase spread)
     """
-    res: Dict[str, Optional[float]] = {name: None for name in FEATURE_NAMES_24}
+    res: Dict[str, Optional[float]] = {name: None for name in FEATURE_NAMES_32}
 
     if iq_signal is None or len(iq_signal) == 0:
         return res
@@ -121,14 +142,27 @@ def extract_24_features(
     res["zero_bin_fraction"] = spec_obs.get("zero_bin_fraction")
 
     # 2. Phase concentrations (11 to 13)
-    # Evaluated via M-th power unit phasors: |E[exp(j * M * phi)]|
     phases = np.angle(iq_signal)
     for m in (2, 4, 8):
-        m_phasor = np.mean(np.exp(1j * m * phases))
-        res[f"phase_m{m}_concentration"] = float(np.abs(m_phasor))
+        m_phasor_raw = float(np.abs(np.mean(np.exp(1j * m * phases))))
+        best_conc = m_phasor_raw
+        if n >= 32:
+            try:
+                ym = (iq_signal.astype(np.complex64)) ** m
+                n_fft = 2 ** int(np.ceil(np.log2(min(n, 1024))))
+                fft_ym = np.abs(np.fft.fft(ym, n=n_fft))
+                k = int(np.argmax(fft_ym[1:n_fft // 2])) + 1
+                f_cfo = float(k / (n_fft * m))
+                t = np.arange(n)
+                derot_phases = phases - 2.0 * np.pi * f_cfo * t
+                derot_conc = float(np.abs(np.mean(np.exp(1j * m * derot_phases))))
+                if derot_conc > best_conc:
+                    best_conc = derot_conc
+            except Exception:
+                pass
+        res[f"phase_m{m}_concentration"] = best_conc
 
     # 3. Phase entropy (14)
-    # Normalized Shannon entropy over 32 bins across [-pi, pi)
     counts, _ = np.histogram(phases, bins=32, range=(-np.pi, np.pi))
     probs = counts / np.sum(counts)
     nonzero_probs = probs[probs > 0]
@@ -159,7 +193,6 @@ def extract_24_features(
         res["radial_entropy"] = 0.0
 
     # 6. IQ Eigenvalue ratio (22)
-    # Ratio of smallest to largest eigenvalue of the I/Q covariance matrix
     i_samples = iq_signal.real.astype(np.float64)
     q_samples = iq_signal.imag.astype(np.float64)
     cov_matrix = np.cov(i_samples, q_samples)
@@ -170,38 +203,140 @@ def extract_24_features(
     else:
         res["iq_eigen_ratio"] = 0.0
 
-    # 7. Fourth-order normalized cumulants c40_norm and c42_norm (23 to 24)
+    # 7. Fourth-order & Sixth-order normalized cumulants (23 to 26)
     p_signal = float(np.mean(amp ** 2))
     if p_signal > 1e-12:
         x_d = iq_signal.astype(np.complex128)
         m20 = np.mean(x_d ** 2)
         m40 = np.mean(x_d ** 4)
         m42 = np.mean((np.abs(x_d) ** 2) * (x_d ** 2))
+        m60 = np.mean(x_d ** 6)
+        m63 = np.mean(amp ** 6)
 
         # C40 = Cum(x, x, x, x) = M40 - 3*(M20^2)
         c40 = m40 - 3.0 * (m20 ** 2)
-        res["c40_norm"] = float(np.abs(c40) / (p_signal ** 2))
+        c40_val = float(np.abs(c40) / (p_signal ** 2))
+
+        # C60 = Cum(x, x, x, x, x, x) = M60 - 15*M40*M20 + 30*(M20^3)
+        c60 = m60 - 15.0 * m40 * m20 + 30.0 * (m20 ** 3)
+        c60_val = float(np.abs(c60) / (p_signal ** 3))
+
+        if n >= 32:
+            try:
+                # CFO-compensated estimation
+                y4 = x_d ** 4
+                n_fft = 2 ** int(np.ceil(np.log2(min(n, 1024))))
+                fft_y4 = np.abs(np.fft.fft(y4, n=n_fft))
+                k4 = int(np.argmax(fft_y4[1:n_fft // 2])) + 1
+                f_cfo4 = float(k4 / (n_fft * 4.0))
+                t = np.arange(n)
+                x_derot = x_d * np.exp(-1j * 2.0 * np.pi * f_cfo4 * t)
+                m20_d = np.mean(x_derot ** 2)
+                m40_d = np.mean(x_derot ** 4)
+                m60_d = np.mean(x_derot ** 6)
+
+                c40_d = float(np.abs(m40_d - 3.0 * (m20_d ** 2)) / (p_signal ** 2))
+                if c40_d > c40_val:
+                    c40_val = c40_d
+
+                c60_d = float(np.abs(m60_d - 15.0 * m40_d * m20_d + 30.0 * (m20_d ** 3)) / (p_signal ** 3))
+                if c60_d > c60_val:
+                    c60_val = c60_d
+            except Exception:
+                pass
+
+        res["c40_norm"] = c40_val
+        res["c60_norm"] = c60_val
 
         # C42 = Cum(x, x, x*, x*) = E[|x|^4] - |M20|^2 - 2*(M21^2)
-        # Note: E[|x|^4] = mean(amp^4)
         e_amp4 = np.mean(amp ** 4)
         c42 = e_amp4 - (np.abs(m20) ** 2) - 2.0 * (p_signal ** 2)
         res["c42_norm"] = float(np.abs(c42) / (p_signal ** 2))
+
+        # C63 = Cum(x, x, x, x*, x*, x*) = M63 - 9*M42*p + 12*p^3 - 3*|M20|^2*p
+        c63 = m63 - 9.0 * e_amp4 * p_signal + 12.0 * (p_signal ** 3) - 3.0 * (np.abs(m20) ** 2) * p_signal
+        res["c63_norm"] = float(np.abs(c63) / (p_signal ** 3))
+
+        # Peak-to-Average Power Ratio (PAPR)
+        res["peak_to_avg_power_ratio"] = float(np.max(amp ** 2) / p_signal)
     else:
         res["c40_norm"] = None
         res["c42_norm"] = None
+        res["c60_norm"] = None
+        res["c63_norm"] = None
+        res["peak_to_avg_power_ratio"] = None
+
+    # 8. Circular skewness and kurtosis (27 to 28)
+    mean_sin = np.mean(np.sin(phases))
+    mean_cos = np.mean(np.cos(phases))
+    circ_mean = np.arctan2(mean_sin, mean_cos)
+    centered_phases = phases - circ_mean
+    res["circular_skewness"] = float(np.mean(np.sin(2.0 * centered_phases)))
+    res["circular_kurtosis"] = float(np.mean(np.cos(2.0 * centered_phases)))
+
+    # 9. Spectral flatness (Wiener entropy) (29)
+    try:
+        fft_mag2 = np.abs(np.fft.fft(iq_signal)) ** 2
+        psd_norm = fft_mag2 / (np.mean(fft_mag2) + 1e-12)
+        geom_mean = np.exp(np.mean(np.log(psd_norm + 1e-12)))
+        arith_mean = np.mean(psd_norm) + 1e-12
+        res["spectral_flatness"] = float(np.clip(geom_mean / arith_mean, 0.0, 1.0))
+    except Exception:
+        res["spectral_flatness"] = 0.5
+
+    # 10. Cyclic frequency peak ratio (30)
+    try:
+        y_env = (amp ** 2) - p_signal
+        n_fft = 2 ** int(np.ceil(np.log2(min(n, 1024))))
+        fft_env = np.abs(np.fft.fft(y_env, n=n_fft))
+        half_spec = fft_env[1:n_fft // 2]
+        mean_spec = np.mean(half_spec)
+        if mean_spec > 1e-12:
+            res["cyclic_freq_peak_ratio"] = float(np.max(half_spec) / mean_spec)
+        else:
+            res["cyclic_freq_peak_ratio"] = 1.0
+    except Exception:
+        res["cyclic_freq_peak_ratio"] = 1.0
+
+    # 11. Normalized phase variance (31)
+    try:
+        delta_phase = np.angle(iq_signal[1:] * np.conj(iq_signal[:-1]))
+        var_delta = np.var(delta_phase)
+        uniform_var = (np.pi ** 2) / 3.0  # ~3.289868
+        res["norm_phase_variance"] = float(np.clip(var_delta / uniform_var, 0.0, 1.0))
+    except Exception:
+        res["norm_phase_variance"] = 0.5
 
     return res
 
 
-def feature_dict_to_vector(feat_dict: Dict[str, Optional[float]]) -> np.ndarray:
-    """Convert feature dictionary to ordered numpy 1D vector (length 24).
+def extract_24_features(
+    iq_signal: np.ndarray,
+    module2_observation: Optional[Dict[str, Any]] = None
+) -> Dict[str, Optional[float]]:
+    """Extract the 24 base engineered features (backwards-compatible)."""
+    full_dict = extract_features(iq_signal, module2_observation)
+    return {name: full_dict.get(name) for name in FEATURE_NAMES_24}
 
-    Replaces None with 0.0 for model input formatting, while preserving
-    the raw dict with None for statistical inspection.
+
+def feature_dict_to_vector(
+    feat_dict: Dict[str, Optional[float]],
+    feature_names: Optional[List[str]] = None
+) -> np.ndarray:
+    """Convert feature dictionary to ordered numpy 1D vector.
+
+    If feature_names is not specified:
+    - If all 32 features exist in feat_dict, returns vector of length 32.
+    - Otherwise, returns vector of length 24 (backwards-compatible).
     """
-    vec = np.zeros(len(FEATURE_NAMES_24), dtype=np.float32)
-    for idx, name in enumerate(FEATURE_NAMES_24):
+    if feature_names is None:
+        if all(k in feat_dict for k in FEATURE_NAMES_32):
+            feature_names = FEATURE_NAMES_32
+        else:
+            feature_names = FEATURE_NAMES_24
+
+    vec = np.zeros(len(feature_names), dtype=np.float32)
+    for idx, name in enumerate(feature_names):
         val = feat_dict.get(name)
         vec[idx] = float(val) if val is not None else 0.0
     return vec

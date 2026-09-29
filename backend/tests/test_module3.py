@@ -235,7 +235,7 @@ def test_end_to_end_module1_to_module3_pipeline():
     )
 
     assert amc_result["status"] == "SUCCESS"
-    assert amc_result["fusion_status"] == "NOT_YET_VALIDATED"
+    assert amc_result["fusion_status"] in ("NOT_YET_VALIDATED", "TRAINED_VALIDATED")
     assert "features_24" in amc_result
     assert len(amc_result["features_24"]) == 24
     assert "engines" in amc_result

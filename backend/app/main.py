@@ -16,7 +16,7 @@ from backend.app.api.routes_module7 import router as module7_router
 from backend.app.api.routes_module8 import router as module8_router
 from backend.app.api.routes_module9 import router as module9_router
 from backend.app.api.routes_module10 import router as module10_router
-from backend.app.api.routes_pipeline import router as pipeline_router
+from backend.app.api.routes_pipeline import router as pipeline_router, experimental_router
 
 app = FastAPI(
     title="Blind Signal Analysis System (SIH26147)",
@@ -36,9 +36,8 @@ app.add_middleware(
 @app.middleware("http")
 async def normalize_api_path(request, call_next):
     # When deployed on Vercel or behind reverse proxies, normalize if '/api' was stripped
-    # Note: Do NOT inspect x-matched-path here, as Vercel sets x-matched-path to the destination (/api/index)
     path = request.scope.get("path", "")
-    if not path.startswith("/api/") and (path.startswith("/pipeline") or path.startswith("/module")):
+    if not path.startswith("/api/") and (path.startswith("/pipeline") or path.startswith("/module") or path.startswith("/experimental/pipeline")):
         request.scope["path"] = f"/api{path}"
     response = await call_next(request)
     return response
@@ -55,6 +54,7 @@ app.include_router(module8_router)
 app.include_router(module9_router)
 app.include_router(module10_router)
 app.include_router(pipeline_router)
+app.include_router(experimental_router)
 
 @app.get("/api")
 @app.get("/api/")
@@ -69,7 +69,10 @@ def api_root():
             "run": "/api/pipeline/run",
             "fixture": "/api/pipeline/fixture",
             "upload": "/api/pipeline/upload",
-            "report": "/api/pipeline/report"
+            "report": "/api/pipeline/report",
+            "experimental_run": "/api/experimental/pipeline/run",
+            "experimental_fixture": "/api/experimental/pipeline/fixture",
+            "experimental_status": "/api/experimental/pipeline/status"
         }
     }
 
@@ -88,6 +91,21 @@ if os.path.exists(frontend_dir):
     @app.get("/")
     def serve_frontend_index():
         return FileResponse(os.path.join(frontend_dir, "index.html"))
+
+# Mount Frontend-Experimental static directory if exists
+experimental_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "Frontend-Experimental")
+if not os.path.exists(experimental_dir):
+    candidate = os.path.join(os.getcwd(), "Frontend-Experimental")
+    if os.path.exists(candidate):
+        experimental_dir = candidate
+
+if os.path.exists(experimental_dir):
+    app.mount("/experimental", StaticFiles(directory=experimental_dir, html=True), name="experimental")
+
+    @app.get("/exp")
+    @app.get("/experimental")
+    def serve_experimental_index():
+        return FileResponse(os.path.join(experimental_dir, "index.html"))
 
 @app.get("/favicon.ico")
 def favicon():

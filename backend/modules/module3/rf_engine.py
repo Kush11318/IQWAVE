@@ -23,7 +23,12 @@ import joblib
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 
-from .feature_extractor import FEATURE_NAMES_24, MODULATION_CLASSES, feature_dict_to_vector
+from .feature_extractor import (
+    FEATURE_NAMES_24,
+    FEATURE_NAMES_32,
+    MODULATION_CLASSES,
+    feature_dict_to_vector
+)
 
 
 class RFEngine:
@@ -85,7 +90,7 @@ class RFEngine:
         self,
         features: Dict[str, Optional[float]]
     ) -> Dict[str, Any]:
-        """Perform inference on the 24-dimensional feature vector.
+        """Perform inference on the engineered feature vector (24 or 32 features).
 
         Returns structured prediction dictionary or reports MODEL_WEIGHTS_UNAVAILABLE.
         """
@@ -102,7 +107,13 @@ class RFEngine:
                 )
             }
 
-        vec = feature_dict_to_vector(features).reshape(1, -1)
+        n_expected = getattr(self.model, "n_features_in_", 24)
+        if n_expected == 32:
+            feat_names = FEATURE_NAMES_32
+        else:
+            feat_names = FEATURE_NAMES_24
+
+        vec = feature_dict_to_vector(features, feature_names=feat_names).reshape(1, -1)
         proba = self.model.predict_proba(vec)[0]
         model_classes = list(self.model.classes_)
 
@@ -122,5 +133,6 @@ class RFEngine:
             "status": "PREDICTION_SUCCESSFUL",
             "predicted_class": best_class,
             "probabilities": probabilities,
-            "feature_count": len(FEATURE_NAMES_24)
+            "feature_count": n_expected
         }
+

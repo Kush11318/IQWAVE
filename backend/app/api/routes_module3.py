@@ -46,8 +46,18 @@ def get_module3_status() -> Dict[str, Any]:
                 "macro_f1": "68.63%"
             }
         },
-        "fusion_status": "NOT_YET_VALIDATED",
-        "confidence_status": "NOT_YET_DEFINED"
+        "engine_c_ensemble": {
+            "name": "Deep Ensemble (3x Multi-Scale Dilated CNN)",
+            "status": "AVAILABLE" if default_amc_service.ensemble_engine.is_available else "MODEL_WEIGHTS_UNAVAILABLE",
+            "n_models_loaded": default_amc_service.ensemble_engine.n_models_loaded
+        },
+        "fusion_engine": {
+            "name": "Dual-Branch Late Fusion Head",
+            "status": "AVAILABLE" if default_amc_service.fusion_engine.is_available else "MODEL_WEIGHTS_UNAVAILABLE",
+            "artifact_path": default_amc_service.fusion_engine.model_path
+        },
+        "fusion_status": "TRAINED_VALIDATED" if default_amc_service.fusion_engine.is_available else "NOT_YET_VALIDATED",
+        "confidence_status": "CALIBRATED" if default_amc_service.fusion_engine.is_available else "NOT_YET_DEFINED"
     }
 
 

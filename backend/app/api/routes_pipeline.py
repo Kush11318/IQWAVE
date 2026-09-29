@@ -110,6 +110,51 @@ def get_integration_fixture(preset: Optional[str] = "qpsk_1200") -> Dict[str, An
             "q": [float(x) for x in rx.imag]
         }
 
+    elif preset_clean in ["radar_lfm_1200", "lfm_1200", "lfm"]:
+        # Tactical Linear Frequency Modulation (LFM) Radar Chirp
+        n_samples = 1200
+        fs, fc, snr_db, mod = 20000000.0, 142850000.0, 22.0, "LFM"
+        t = np.linspace(-0.5, 0.5, n_samples)
+        k_chirp = 5e6
+        tx = np.exp(1j * np.pi * k_chirp * (t ** 2))
+        pwr = np.mean(np.abs(tx)**2)
+        noise_pwr = pwr / (10**(snr_db / 10.0))
+        noise = rng.normal(0, np.sqrt(noise_pwr/2), len(tx)) + 1j * rng.normal(0, np.sqrt(noise_pwr/2), len(tx))
+        rx = tx + noise
+        return {
+            "status": "SUCCESS",
+            "name": "Tactical_LFM_Radar_Chirp_1200Sa.IQ",
+            "modulation": "LFM",
+            "waveform_family": "RadChar (Linear Frequency Modulation)",
+            "sample_rate": fs,
+            "center_frequency": fc,
+            "sample_count": len(rx),
+            "i": [float(x) for x in rx.real],
+            "q": [float(x) for x in rx.imag]
+        }
+
+    elif preset_clean in ["radar_barker_1300", "barker_1300", "barker"]:
+        # X-Band Barker-13 Biphase-Coded Radar Pulse
+        barker13 = np.array([1, 1, 1, 1, 1, -1, -1, 1, 1, -1, 1, -1, 1], dtype=float)
+        sps = 100
+        tx = np.repeat(barker13, sps).astype(complex)
+        fs, fc, snr_db, mod = 10000000.0, 142850000.0, 20.0, "Barker"
+        pwr = np.mean(np.abs(tx)**2)
+        noise_pwr = pwr / (10**(snr_db / 10.0))
+        noise = rng.normal(0, np.sqrt(noise_pwr/2), len(tx)) + 1j * rng.normal(0, np.sqrt(noise_pwr/2), len(tx))
+        rx = tx + noise
+        return {
+            "status": "SUCCESS",
+            "name": "XBand_Barker13_PhaseCoded_Radar_1300Sa.IQ",
+            "modulation": "Barker",
+            "waveform_family": "RadChar (Barker-13 Binary Phase Code)",
+            "sample_rate": fs,
+            "center_frequency": fc,
+            "sample_count": len(rx),
+            "i": [float(x) for x in rx.real],
+            "q": [float(x) for x in rx.imag]
+        }
+
     else: # Default: qpsk_1200
         n_sym, sps, snr_db, mod = 300, 4, 24.0, "QPSK"
         bits = rng.randint(0, 2, size=n_sym * 2)
@@ -159,10 +204,14 @@ def get_integration_fixture(preset: Optional[str] = "qpsk_1200") -> Dict[str, An
     }
 
 
+_last_pipeline_result: Optional[Dict[str, Any]] = None
+
+
 @router.post("/run")
 def post_run_pipeline(req: PipelineRunRequest) -> Dict[str, Any]:
     """Execute end-to-end signal analysis pipeline through Modules 1 to 10."""
-    return default_pipeline_orchestrator.run_pipeline(
+    global _last_pipeline_result
+    res = default_pipeline_orchestrator.run_pipeline(
         i_channel=req.i_channel,
         q_channel=req.q_channel,
         modulation=req.modulation,
@@ -181,6 +230,8 @@ def post_run_pipeline(req: PipelineRunRequest) -> Dict[str, Any]:
         candidate_interleaver_widths=req.candidate_interleaver_widths,
         metadata=req.metadata
     )
+    _last_pipeline_result = res
+    return res
 
 
 @router.post("/report")
@@ -220,6 +271,21 @@ def post_generate_report(payload: Dict[str, Any], format: str = "json") -> Any:
     else:
         json_report = default_report_generator.generate_json_report(pipeline_res)
         return Response(content=py_json.dumps(json_report, indent=2), media_type="application/json")
+
+
+@router.get("/report/{format}")
+def get_pipeline_report(format: str = "json") -> Any:
+    """Generate engineering report (json, html, or markdown) for the most recent pipeline run."""
+    global _last_pipeline_result
+    if _last_pipeline_result is None:
+        fixture_data = get_integration_fixture("qpsk_1200")
+        _last_pipeline_result = default_pipeline_orchestrator.run_pipeline(
+            i_channel=fixture_data.get("i"),
+            q_channel=fixture_data.get("q"),
+            sample_rate=fixture_data.get("sample_rate"),
+            center_frequency=fixture_data.get("center_frequency")
+        )
+    return post_generate_report(_last_pipeline_result, format=format)
 
 
 @router.post("/upload")
@@ -280,3 +346,15 @@ async def post_upload_pipeline(
             "pipeline_warnings": m1_res.get("warnings", []),
             "metadata": m1_res.get("metadata")
         }
+
+
+# ==============================================================================
+# EXPERIMENTAL PIPELINE ROUTER (ALIASED FOR FRONTEND-EXPERIMENTAL)
+# ==============================================================================
+experimental_router = APIRouter(prefix="/api/experimental/pipeline", tags=["Experimental Pipeline"])
+experimental_router.add_api_route("/status", get_pipeline_status, methods=["GET"])
+experimental_router.add_api_route("/fixture", get_integration_fixture, methods=["GET"])
+experimental_router.add_api_route("/run", post_run_pipeline, methods=["POST"])
+experimental_router.add_api_route("/report", post_generate_report, methods=["POST"])
+experimental_router.add_api_route("/report/{format}", get_pipeline_report, methods=["GET"])
+experimental_router.add_api_route("/upload", post_upload_pipeline, methods=["POST"])

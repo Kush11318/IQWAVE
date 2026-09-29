@@ -26,3 +26,7 @@ Thumbs.db
 ehthumbs.db
 [Dd]esktop.ini
 .DS_Store
+
+# Nested Clones & Temp Logs
+DAWC---Digital-Automated-Waveform-Classifier/
+scratch/*.txt

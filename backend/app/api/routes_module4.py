@@ -59,20 +59,8 @@ def estimate_parameters(req: ParameterEstimateRequest) -> Dict[str, Any]:
             "validation": val_res
         }
 
-    # Determine modulation: from request or Module 3
+    # Modulation provided explicitly in request (Module 4 does not perform AMC)
     active_mod = req.modulation
-    if not active_mod:
-        mod2_res = observe_from_module1(canonical_iq, val_res)
-        amc_res = classify_amc(canonical_iq, module2_observation=mod2_res.observation)
-        # Check if an engine produced a prediction
-        rf_pred = amc_res.get("engines", {}).get("engine_a_rf", {}).get("predicted_class")
-        cnn_pred = amc_res.get("engines", {}).get("engine_b_cnn", {}).get("predicted_class")
-        if rf_pred:
-            active_mod = rf_pred
-        elif cnn_pred:
-            active_mod = cnn_pred
-        else:
-            active_mod = None  # Do NOT invent a modulation if weights are unavailable
 
     meta = {
         "sample_rate": req.sample_rate,

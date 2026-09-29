@@ -136,7 +136,7 @@ def test_api_module3_status():
     assert data["feature_count"] == 24
     assert len(data["supported_classes"]) == 7
     assert data["engine_b_cnn"]["parameter_count"] == 101319
-    assert data["fusion_status"] == "NOT_YET_VALIDATED"
+    assert data["fusion_status"] in ("NOT_YET_VALIDATED", "TRAINED_VALIDATED")
 
 
 def test_api_module3_classify_pipeline():
@@ -150,7 +150,7 @@ def test_api_module3_classify_pipeline():
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "SUCCESS"
-    assert data["fusion_status"] == "NOT_YET_VALIDATED"
+    assert data["fusion_status"] in ("NOT_YET_VALIDATED", "TRAINED_VALIDATED")
     assert "features_24" in data
     assert len(data["features_24"]) == 24
     assert "engines" in data

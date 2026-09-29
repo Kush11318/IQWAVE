@@ -141,25 +141,43 @@ class PipelineOrchestrator:
             pipeline_warnings.append(f"MODULE_3_AMC_ERROR: {str(err)}")
             m3_output = {"status": "PARTIAL_ERROR", "error": str(err), "engines": {}}
 
-        # Resolve active modulation: caller override > AMC RF prediction > AMC CNN prediction > physics inference
-        rf_pred = m3_output.get("engines", {}).get("engine_a_rf", {}).get("predicted_class")
-        cnn_pred = m3_output.get("engines", {}).get("engine_b_cnn", {}).get("predicted_class")
-        active_mod = override_modulation or modulation or rf_pred or cnn_pred
+        # Resolve active modulation: caller override > joint dual-engine consensus > individual AMC > physics inference
+        rf_engine_out = m3_output.get("engines", {}).get("engine_a_rf", {})
+        cnn_engine_out = m3_output.get("engines", {}).get("engine_b_cnn", {})
+        rf_pred = rf_engine_out.get("predicted_class")
+        cnn_pred = cnn_engine_out.get("predicted_class")
+        rf_probs = rf_engine_out.get("probabilities")
+        cnn_probs = cnn_engine_out.get("probabilities")
+
+        amc_consensus = None
+        if rf_probs and cnn_probs:
+            # Dual-engine calibrated posterior consensus
+            joint_scores = {}
+            for cls_name in set(rf_probs.keys()).intersection(cnn_probs.keys()):
+                joint_scores[cls_name] = 0.55 * float(rf_probs[cls_name]) + 0.45 * float(cnn_probs[cls_name])
+            if joint_scores:
+                amc_consensus = max(joint_scores, key=joint_scores.get)
+
+        active_mod = override_modulation or modulation or amc_consensus or rf_pred or cnn_pred
 
         # Blind physical decision tree fallback if no weights/override present (Swami & Sadler 2000)
         if not active_mod:
             try:
-                obs_feats = m2_output.get("features", {}) if isinstance(m2_output, dict) else {}
-                c20 = abs(obs_feats.get("c20", 0.0))
-                c21 = max(1e-12, abs(obs_feats.get("c21", 1.0)))
-                c42 = obs_feats.get("c42", -1.0)
-                circ = c20 / c21
-                if circ > 0.65:
+                feats24 = m3_output.get("features_24", {}) if isinstance(m3_output, dict) else {}
+                obs_dict = m2_output.get("observation", {}) if isinstance(m2_output, dict) else {}
+                circ = float(feats24.get("circularity_ratio") or obs_dict.get("circular", {}).get("m20_m21") or 0.0)
+                amp_cv = float(feats24.get("amp_cv") or obs_dict.get("amplitude", {}).get("cv") or 0.3)
+                c42 = float(feats24.get("c42_norm") or 0.8)
+                c40 = float(feats24.get("c40_norm") or 0.0)
+
+                if amp_cv < 0.12:
+                    active_mod = "GFSK"
+                elif circ > 0.60 or (amp_cv > 0.38 and c40 > 0.10):
                     active_mod = "BPSK"
-                elif c42 / (c21**2) < -1.25:
+                elif amp_cv > 0.35 and c42 < 0.65:
                     active_mod = "QAM16"
                 else:
-                    active_mod = "QPSK" # Default robust M-PSK hypothesis
+                    active_mod = "QPSK"  # Default robust M-PSK hypothesis
                 pipeline_warnings.append(f"BLIND_STATISTICAL_MODULATION_INFERRED_{active_mod}")
             except Exception:
                 active_mod = "QPSK"
@@ -265,9 +283,17 @@ class PipelineOrchestrator:
 
         # Resolve noise parameter N0
         active_n0 = n0
-        if active_n0 is None and m6_output.get("snr_db") is not None:
-            snr_val = float(m6_output["snr_db"])
-            active_n0 = float(10.0 ** (-snr_val / 10.0))
+        if active_n0 is None:
+            snr_candidates = [
+                m6_output.get("snr_db"),
+                m6_output.get("estimator_outputs", {}).get("robust_residual", {}).get("snr_db"),
+                m6_output.get("estimator_outputs", {}).get("ordinary_residual", {}).get("snr_db"),
+                m6_output.get("estimator_outputs", {}).get("fourth_moment", {}).get("snr_db"),
+            ]
+            valid_snrs = [s for s in snr_candidates if s is not None and np.isfinite(s) and -10.0 <= float(s) <= 50.0]
+            if valid_snrs:
+                snr_val = float(valid_snrs[0])
+                active_n0 = float(10.0 ** (-snr_val / 10.0))
 
         # ======================================================================
         # MODULE 7: Soft-Bit & LLR Generation (Locked)
