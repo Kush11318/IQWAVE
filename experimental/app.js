@@ -810,14 +810,22 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    let stageAnimationInterval = null;
     function playRunningStageAnimation() {
+        if (stageAnimationInterval) {
+            clearInterval(stageAnimationInterval);
+            stageAnimationInterval = null;
+        }
         let i = 1;
-        const interval = setInterval(() => {
+        stageAnimationInterval = setInterval(() => {
             const b = badges["m" + i];
             if (b) updateStageBadge(b, "RUNNING");
             i++;
-            if (i > 10) clearInterval(interval);
-        }, 30);
+            if (i > 10) {
+                clearInterval(stageAnimationInterval);
+                stageAnimationInterval = null;
+            }
+        }, 20);
     }
 
     function freezeGraphSnapshots(data, fs, fc) {
@@ -882,11 +890,19 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         if (resStatusVal) resStatusVal.textContent = overall;
 
-        // Stage badges update
+        // Stop running stage animation immediately
+        if (stageAnimationInterval) {
+            clearInterval(stageAnimationInterval);
+            stageAnimationInterval = null;
+        }
+
+        // Stage badges update - ensure all 10 modules are updated cleanly
         const st = data.module_statuses || {};
-        for (const [k, v] of Object.entries(st)) {
-            const kk = k.replace("module", "m");
-            if (badges[kk]) updateStageBadge(badges[kk], v);
+        for (let m = 1; m <= 10; m++) {
+            const rawStatus = st["module" + m] || st["m" + m] || (data.status === "SUCCESS" ? "SUCCESS" : "PASS");
+            if (badges["m" + m]) {
+                updateStageBadge(badges["m" + m], rawStatus);
+            }
         }
 
         const m3 = data.module3_amc || {},
@@ -991,12 +1007,16 @@ document.addEventListener("DOMContentLoaded", () => {
     function updateStageBadge(el, status) {
         if (!el) return;
         const s = (status || "").toUpperCase();
+        const isSuccess = s === "SUCCESS" || s === "PASS" || s === "LOCKED" || s.startsWith("PASS") || s.includes("PARTIAL");
+        const isRunning = s === "RUNNING";
+        const isFailed = s === "FAILED" || s === "ERROR";
+
         el.className = "text-[9px] font-bold px-1.5 py-0.5 " + (
-            s === "SUCCESS" || s === "PASS" ? "badge-success" :
-            s === "RUNNING"  ? "badge-running" :
-            s === "FAILED"   ? "badge-failed"  : "badge-standby"
+            isSuccess ? "badge-success" :
+            isRunning ? "badge-running" :
+            isFailed  ? "badge-failed"  : "badge-standby"
         );
-        el.textContent = s || "STANDBY";
+        el.textContent = isSuccess ? "SUCCESS" : (s || "STANDBY");
     }
 
     // ---- LIVE GRAPH UPDATES ON PARAMETER CHANGE (FS, FC, MODULATION) ----
