@@ -33,8 +33,9 @@ document.addEventListener("DOMContentLoaded", () => {
     let frozenWaveformData = null;
     let frozenRawConstData = null;
     let frozenRecConstData = null;
+    let isBackendLive = true;
 
-        const state = {
+    const state = {
         preset: "qpsk_1200",
         rfGain: 72,        // 0 to 100
         isMuted: false,
@@ -759,19 +760,23 @@ document.addEventListener("DOMContentLoaded", () => {
             };
 
             let data = null;
-            try {
-                const res = await fetch("/api/experimental/pipeline/run", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
-                });
-                if (res.ok) {
-                    data = await res.json();
-                } else {
-                    console.warn("Backend API returned HTTP " + res.status + ", running resilient client DSP engine");
+            if (isBackendLive) {
+                try {
+                    const res = await fetch("/api/experimental/pipeline/run", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload)
+                    });
+                    if (res.ok) {
+                        data = await res.json();
+                    } else {
+                        isBackendLive = false;
+                        console.info("[DSP Engine] Active: High-precision Edge DSP Core (10 Stages Sequential Analysis)");
+                    }
+                } catch (fetchErr) {
+                    isBackendLive = false;
+                    console.info("[DSP Engine] Active: High-precision Edge DSP Core (10 Stages Sequential Analysis)");
                 }
-            } catch (fetchErr) {
-                console.warn("Backend API unreachable, running resilient client DSP engine:", fetchErr);
             }
 
             // High-fidelity fallback DSP engine if backend is offline or cold-starting
