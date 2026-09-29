@@ -204,6 +204,28 @@ def get_integration_fixture(preset: Optional[str] = "qpsk_1200") -> Dict[str, An
     }
 
 
+def sanitize_for_json(obj: Any) -> Any:
+    """Recursively convert NumPy arrays, complex numbers, and non-serializable objects into JSON-safe types."""
+    import numpy as np
+    if isinstance(obj, (complex, np.complex64, np.complex128)):
+        return {"real": float(obj.real), "imag": float(obj.imag)}
+    if isinstance(obj, np.ndarray):
+        if np.iscomplexobj(obj):
+            return [{"real": float(x.real), "imag": float(x.imag)} for x in obj]
+        return obj.tolist()
+    if isinstance(obj, (np.floating, np.float32, np.float64)):
+        return float(obj)
+    if isinstance(obj, (np.integer, np.int32, np.int64)):
+        return int(obj)
+    if isinstance(obj, (np.bool_, bool)):
+        return bool(obj)
+    if isinstance(obj, dict):
+        return {str(k): sanitize_for_json(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple, set)):
+        return [sanitize_for_json(v) for v in obj]
+    return obj
+
+
 _last_pipeline_result: Optional[Dict[str, Any]] = None
 
 
@@ -231,7 +253,7 @@ def post_run_pipeline(req: PipelineRunRequest) -> Dict[str, Any]:
         metadata=req.metadata
     )
     _last_pipeline_result = res
-    return res
+    return sanitize_for_json(res)
 
 
 @router.post("/report")
@@ -308,7 +330,7 @@ async def post_upload_pipeline(
             sr = sample_rate if sample_rate is not None else data.get("sample_rate")
             fc = center_frequency if center_frequency is not None else data.get("center_frequency")
             mod = override_modulation if override_modulation else data.get("modulation")
-            return default_pipeline_orchestrator.run_pipeline(
+            res = default_pipeline_orchestrator.run_pipeline(
                 i_channel=i_samples,
                 q_channel=q_samples,
                 sample_rate=sr,
@@ -317,6 +339,7 @@ async def post_upload_pipeline(
                 input_type="UPLOADED_JSON_IQ",
                 metadata={"filename": filename}
             )
+            return sanitize_for_json(res)
         except Exception as e:
             return {
                 "status": "INVALID_JSON_SIGNAL",
@@ -347,7 +370,7 @@ async def post_upload_pipeline(
                 i_samples = raw_i8[0::2]
                 q_samples = raw_i8[1::2]
 
-            return default_pipeline_orchestrator.run_pipeline(
+            res = default_pipeline_orchestrator.run_pipeline(
                 i_channel=i_samples,
                 q_channel=q_samples,
                 sample_rate=sample_rate or 20000000.0,
@@ -356,6 +379,7 @@ async def post_upload_pipeline(
                 input_type=f"UPLOADED_BINARY_IQ_{ext.upper().replace('.', '')}",
                 metadata={"filename": filename}
             )
+            return sanitize_for_json(res)
         except Exception as e:
             return {
                 "status": "RAW_IQ_PARSE_ERROR",
@@ -381,7 +405,7 @@ async def post_upload_pipeline(
                 i_samples = i_samples / max_v
                 q_samples = q_samples / max_v
 
-            return default_pipeline_orchestrator.run_pipeline(
+            res = default_pipeline_orchestrator.run_pipeline(
                 i_channel=i_samples,
                 q_channel=q_samples,
                 sample_rate=float(sample_rate or sr),
@@ -390,6 +414,7 @@ async def post_upload_pipeline(
                 input_type="UPLOADED_WAV_FILE",
                 metadata={"filename": filename}
             )
+            return sanitize_for_json(res)
         except Exception as e:
             return {
                 "status": "WAV_PARSE_ERROR",

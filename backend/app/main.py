@@ -21,7 +21,8 @@ from backend.app.api.routes_pipeline import router as pipeline_router, experimen
 app = FastAPI(
     title="DAWC — Digital Automated Waveform Classifier (SIH26147)",
     description="Automated model for analysis of .IQ and .wav files along with signal parameter extraction, digital waveform classification, and blind protocol recovery.",
-    version="1.0.0"
+    version="1.0.0",
+    redirect_slashes=False
 )
 
 # CORS middleware for local frontend development
@@ -35,8 +36,17 @@ app.add_middleware(
 
 @app.middleware("http")
 async def normalize_api_path(request, call_next):
-    # When deployed on Vercel or behind reverse proxies, normalize paths
-    path = request.scope.get("path", "")
+    # When deployed on Vercel or behind reverse proxies, inspect routing headers first
+    headers = dict(request.scope.get("headers", []))
+    matched_path = None
+    for h_name, h_val in headers.items():
+        if h_name.lower() in [b"x-matched-path", b"x-forwarded-uri", b"x-real-origin-url", b"x-vercel-sc-path"]:
+            matched_path = h_val.decode("utf-8", errors="ignore")
+            break
+
+    path = matched_path or request.scope.get("path", "")
+    if "?" in path:
+        path = path.split("?")[0]
 
     # Strip any serverless file prefix (/api/index.py, /index.py, /api/index, /index)
     for prefix in ["/api/index.py", "/index.py", "/api/index", "/index"]:
@@ -49,10 +59,14 @@ async def normalize_api_path(request, call_next):
 
     # If stripped path is empty or root
     if path in ["", "/"]:
-        path = "/api"
+        method = request.scope.get("method", "GET").upper()
+        if method == "POST":
+            path = "/api/experimental/pipeline/run"
+        else:
+            path = "/api"
 
     # Ensure /api prefix if routed directly to submodule or experimental
-    if not path.startswith("/api/") and (path.startswith("/pipeline") or path.startswith("/module") or path.startswith("/experimental/pipeline")):
+    if not path.startswith("/api/") and (path.startswith("/pipeline") or path.startswith("/module") or path.startswith("/experimental")):
         path = f"/api{path}"
 
     request.scope["path"] = path
@@ -70,6 +84,13 @@ app.include_router(module7_router)
 app.include_router(module8_router)
 app.include_router(module9_router)
 app.include_router(module10_router)
+from backend.app.api.routes_pipeline import (
+    router as pipeline_router,
+    experimental_router,
+    post_run_pipeline,
+    PipelineRunRequest,
+    get_integration_fixture
+)
 app.include_router(pipeline_router)
 app.include_router(experimental_router)
 
@@ -92,6 +113,19 @@ def api_root():
             "experimental_status": "/api/experimental/pipeline/status"
         }
     }
+
+@app.post("/api")
+@app.post("/api/")
+@app.post("/api/index.py")
+@app.post("/index.py")
+def api_root_post(req: PipelineRunRequest):
+    return post_run_pipeline(req)
+
+@app.get("/api/fixture")
+@app.get("/fixture")
+def api_direct_fixture(preset: str = "qpsk_1200"):
+    return get_integration_fixture(preset=preset)
+
 
 
 
