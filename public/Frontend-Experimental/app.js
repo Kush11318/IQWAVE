@@ -15,37 +15,6 @@
  *    - Interleaved vs Deinterleaved Matrix Visualizer
  */
 
-    // ---- RESILIENT API NETWORK RESOLUTION ----
-    const API_BASE_URL = (function() {
-        if (typeof window !== "undefined" && window.location) {
-            const origin = window.location.origin;
-            if (origin && (origin.includes(":5500") || origin.includes(":5173") || origin.includes(":3000") || origin.startsWith("file:"))) {
-                return "http://127.0.0.1:8000";
-            }
-        }
-        return "";
-    })();
-
-    async function apiFetch(path, options) {
-        const fullUrl = path.startsWith("http") ? path : `${API_BASE_URL}${path}`;
-        try {
-            const res = await fetch(fullUrl, options);
-            if (res.ok) return res;
-            if (res.status === 404 && path.includes("/api/experimental/pipeline/")) {
-                const altPath = path.replace("/api/experimental/pipeline/", "/api/pipeline/");
-                const altRes = await fetch(`${API_BASE_URL}${altPath}`, options);
-                if (altRes.ok) return altRes;
-            }
-            return res;
-        } catch (err) {
-            if (path.includes("/api/experimental/pipeline/")) {
-                const altPath = path.replace("/api/experimental/pipeline/", "/api/pipeline/");
-                return await fetch(`${API_BASE_URL}${altPath}`, options);
-            }
-            throw err;
-        }
-    }
-
 document.addEventListener("DOMContentLoaded", () => {
     // ---- STATE DEFINITION ----
     let currentSignal = {
@@ -283,7 +252,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (presetKey === "dc_offset")  { loadDcOffset();  return; }
         try {
             setRxStatus("FETCHING", "#ffba27");
-            const res = await apiFetch("/api/experimental/pipeline/fixture?preset=" + presetKey);
+            const res = await fetch("/api/experimental/pipeline/fixture?preset=" + presetKey);
             if (!res.ok) throw new Error("HTTP error " + res.status);
             const data = await res.json();
             if (data && data.i) {
@@ -430,7 +399,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 n0: 0.02 // Critical: ensures Soft-bit LLR & FEC identification run smoothly!
             };
 
-            const res = await apiFetch("/api/experimental/pipeline/run", {
+            const res = await fetch("/api/experimental/pipeline/run", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
@@ -1981,7 +1950,7 @@ document.addEventListener("DOMContentLoaded", () => {
     async function requestReport(fmt) {
         try {
             setRxStatus("REPORT-GEN", "#ffba27");
-            const res = await apiFetch("/api/experimental/pipeline/report/" + fmt);
+            const res = await fetch("/api/experimental/pipeline/report/" + fmt);
             if (!res.ok) throw new Error("Report generation failed (" + res.status + ")");
             if (fmt === "html") {
                 const blob = await res.blob();
@@ -2017,5 +1986,5 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     function hideAlert() {
         if (alertBanner) { alertBanner.textContent = ""; alertBanner.classList.add("hidden"); }
-    window.__RADAR_APP_LOADED__ = true;
+    }
 });
