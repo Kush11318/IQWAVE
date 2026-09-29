@@ -36,11 +36,18 @@ app.add_middleware(
 
 @app.middleware("http")
 async def normalize_api_path(request, call_next):
+    # Check explicit query parameter forwarded from vercel.json rewrite
+    vpath = request.query_params.get("__vercel_path")
+    if vpath:
+        path = f"/api/{vpath.lstrip('/')}"
+        request.scope["path"] = path
+        return await call_next(request)
+
     # When deployed on Vercel or behind reverse proxies, inspect routing headers first
     headers = dict(request.scope.get("headers", []))
     matched_path = None
     for h_name, h_val in headers.items():
-        if h_name.lower() in [b"x-matched-path", b"x-forwarded-uri", b"x-real-origin-url", b"x-vercel-sc-path"]:
+        if h_name.lower() in [b"x-matched-path", b"x-forwarded-uri", b"x-real-origin-url", b"x-vercel-sc-path", b"x-now-route-matches"]:
             matched_path = h_val.decode("utf-8", errors="ignore")
             break
 
