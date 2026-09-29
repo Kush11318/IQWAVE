@@ -280,9 +280,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 hideAlert();
                 setRxStatus("READY", "#00ff66");
 
-                // Clear frozen results and put dashboard into STANDBY
-                clearFrozen();
-                resetDashboardToStandby();
+                // Immediately compute and render PSD thermal gradient, waveform, and raw constellation
+                freezeGraphSnapshots({}, currentSignal.fs, currentSignal.fc);
+                hasAnalyzed = true;
+
+                // Automatically trigger full analysis so digital recovery suite and all metrics populate
+                runPipeline();
             }
         } catch (err) {
             showError("Failed to load preset: " + err.message);
@@ -1335,11 +1338,15 @@ document.addEventListener("DOMContentLoaded", () => {
         ctx.beginPath(); ctx.moveTo(w / 2, 0); ctx.lineTo(w / 2, h); ctx.stroke();
         ctx.setLineDash([]);
 
-        if (!hasAnalyzed || !frozenPsdData) {
+        if (!frozenPsdData && currentSignal.i && currentSignal.i.length > 0) {
+            freezeGraphSnapshots({}, currentSignal.fs, currentSignal.fc);
+        }
+
+        if (!frozenPsdData) {
             ctx.fillStyle = "#0a3a1f";
             ctx.font = "bold " + 11 * dpr + "px JetBrains Mono";
             ctx.textAlign = "center";
-            ctx.fillText("PSD FFT SPECTRUM  —  PRESS RUN COMPLETE ANALYSIS", w / 2, h / 2 - 10 * dpr);
+            ctx.fillText("NO SIGNAL LOADED  —  SELECT PRESET OR UPLOAD IQ", w / 2, h / 2 - 10 * dpr);
             ctx.font = 9 * dpr + "px JetBrains Mono";
             ctx.fillStyle = "#08331a";
             ctx.fillText("0 dB baseline is anchored at the bottom line", w / 2, h / 2 + 12 * dpr);
@@ -1549,11 +1556,15 @@ document.addEventListener("DOMContentLoaded", () => {
         ctx.fillStyle = "#0e4b25";
         ctx.fillText("-1.0", 6 * dpr, cy + (h * 0.40));
 
-        if (!hasAnalyzed || !frozenWaveformData) {
+        if (!frozenWaveformData && currentSignal.i && currentSignal.i.length > 0) {
+            frozenWaveformData = { i: currentSignal.i.slice(), q: currentSignal.q.slice() };
+        }
+
+        if (!frozenWaveformData) {
             ctx.fillStyle = "#0a3a1f";
             ctx.font = "bold " + 10 * dpr + "px JetBrains Mono";
             ctx.textAlign = "center";
-            ctx.fillText("TIME-DOMAIN WAVEFORM  —  AWAITING ANALYSIS", w / 2, cy - 14 * dpr);
+            ctx.fillText("TIME-DOMAIN WAVEFORM  —  AWAITING SIGNAL", w / 2, cy - 14 * dpr);
         } else {
             const gain = state.rfGain / 72;
             const iSa = frozenWaveformData.i, qSa = frozenWaveformData.q;
@@ -1639,7 +1650,11 @@ document.addEventListener("DOMContentLoaded", () => {
         ctx.fillText("+I", cx + scale * 1.2, cy - 4 * dpr);
         ctx.fillText("+Q", cx + 6 * dpr, cy - scale * 1.15);
 
-        if (!hasAnalyzed || !frozenRawConstData) {
+        if (!frozenRawConstData && currentSignal.i && currentSignal.i.length > 0) {
+            frozenRawConstData = { i: currentSignal.i.slice(), q: currentSignal.q.slice() };
+        }
+
+        if (!frozenRawConstData) {
             [[1, 1], [-1, 1], [-1, -1], [1, -1]].forEach(([x, y]) => {
                 const px = cx + (x / Math.SQRT2) * scale, py = cy - (y / Math.SQRT2) * scale;
                 ctx.fillStyle = "rgba(0, 255, 102, 0.08)";
@@ -1648,7 +1663,7 @@ document.addEventListener("DOMContentLoaded", () => {
             ctx.fillStyle = "#0a3a1f";
             ctx.font = "bold " + 9 * dpr + "px JetBrains Mono";
             ctx.textAlign = "center";
-            ctx.fillText("RAW I/Q  —  AWAITING ANALYSIS", cx, cy + 26 * dpr);
+            ctx.fillText("RAW I/Q  —  AWAITING SIGNAL", cx, cy + 26 * dpr);
         } else {
             const ri = frozenRawConstData.i, rq = frozenRawConstData.q;
             const count = Math.min(320, ri.length);
