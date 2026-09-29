@@ -7,31 +7,31 @@
     },
     {
       "source": "/experimental",
-      "destination": "/experimental/index.html"
+      "destination": "/index.html"
     },
     {
       "source": "/experimental/",
-      "destination": "/experimental/index.html"
+      "destination": "/index.html"
     },
     {
       "source": "/exp",
-      "destination": "/experimental/index.html"
+      "destination": "/index.html"
     },
     {
       "source": "/radar",
-      "destination": "/experimental/index.html"
+      "destination": "/index.html"
     },
     {
       "source": "/radar-labview",
-      "destination": "/experimental/index.html"
+      "destination": "/index.html"
     },
     {
       "source": "/Frontend-Experimental",
-      "destination": "/experimental/index.html"
+      "destination": "/index.html"
     },
     {
       "source": "/Frontend-Experimental/(.*)",
-      "destination": "/experimental/$1"
+      "destination": "/$1"
     }
   ]
 }

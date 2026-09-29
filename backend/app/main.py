@@ -89,10 +89,23 @@ if os.path.exists(frontend_dir):
     app.mount("/static", StaticFiles(directory=frontend_dir), name="static")
 
     @app.get("/")
+    @app.get("/exp")
+    @app.get("/experimental")
+    @app.get("/radar")
+    @app.get("/radar-labview")
+    @app.get("/Frontend-Experimental")
     def serve_frontend_index():
         return FileResponse(os.path.join(frontend_dir, "index.html"))
 
-# Mount Frontend-Experimental / Radar LabView static directory if exists
+    @app.get("/app.js")
+    def serve_frontend_js():
+        return FileResponse(os.path.join(frontend_dir, "app.js"), media_type="application/javascript")
+
+    @app.get("/style.css")
+    def serve_frontend_css():
+        return FileResponse(os.path.join(frontend_dir, "style.css"), media_type="text/css")
+
+# Also mount Frontend-Experimental / Radar LabView static directory for alias compatibility
 candidates = [
     os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "Frontend-Experimental"),
     os.path.join(os.getcwd(), "Frontend-Experimental"),
@@ -103,13 +116,6 @@ experimental_dir = next((c for c in candidates if os.path.exists(c)), None)
 
 if experimental_dir:
     app.mount("/experimental", StaticFiles(directory=experimental_dir, html=True), name="experimental")
-
-    @app.get("/exp")
-    @app.get("/experimental")
-    @app.get("/radar")
-    @app.get("/radar-labview")
-    def serve_experimental_index():
-        return FileResponse(os.path.join(experimental_dir, "index.html"))
 
 @app.get("/favicon.ico")
 def favicon():

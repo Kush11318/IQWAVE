@@ -1,620 +1,1516 @@
 <!DOCTYPE html>
-<html lang="en">
+<html class="dark" lang="en" style="scroll-behavior: smooth;">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DAWC — Digital Automated Waveform Classifier | SIH26147</title>
-  <link rel="stylesheet" href="/static/style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📡</text></svg>">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <!-- Vercel Web Analytics & Speed Insights -->
-  <script>
-    window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
-    window.si = window.si || function () { (window.siq = window.siq || []).push(arguments); };
-  </script>
-  <script defer src="/_vercel/insights/script.js"></script>
-  <script defer src="/_vercel/speed-insights/script.js"></script>
-</head>
-<body>
-  <div class="app-wrapper">
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <meta content="web_dashboard" name="shell-type"/>
+    <title>DAWC — Digital Automated Waveform Classifier // RADAR LAB (SIH26147)</title>
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "phosphor": "#00ff66",
+                "phosphor-bright": "#6bff83",
+                "phosphor-dim": "#1e6b36",
+                "phosphor-faint": "#0d3b1d",
+                "radar-dark": "#010e06",
+                "radar-panel": "#02170b",
+                "radar-surface": "#042012",
+                "radar-border": "#0a3a1f",
+                "radar-grid": "#08331a",
+                "amber-phos": "#ffba27",
+                "alert-red": "#ff4d4d",
+              },
+              fontFamily: {
+                mono: ["JetBrains Mono", "monospace"],
+                display: ["Space Grotesk", "monospace"],
+              }
+            }
+          }
+        }
+    </script>
+    <style>
+        @layer base {
+          body {
+            background-color: #010e06;
+            color: #caead5;
+            font-family: 'JetBrains Mono', monospace;
+            -webkit-font-smoothing: antialiased;
+          }
+        }
 
-    <!-- ========================================================================
-         HEADER: SYSTEM IDENTITY & VERIFIED SCIENTIFIC STATUS
-         ======================================================================== -->
-    <header class="app-header">
-      <div class="brand-group">
-        <div class="brand-logo-badge">📡</div>
-        <div class="brand-title-box">
-          <h1>DAWC <span style="font-weight: 500; font-size: 1.1rem; opacity: 0.9;">— Digital Automated Waveform Classifier</span> <span class="sih-tag">SIH26147</span></h1>
-          <p class="brand-subtitle">Blind Signal Analysis System — Autonomous Demodulation, Parameter Extraction &amp; Protocol Recovery Platform</p>
+        /* CRT scanline simulation */
+        .crt-scanlines {
+          background: linear-gradient(
+            rgba(0, 255, 102, 0) 50%, 
+            rgba(0, 0, 0, 0.35) 50%
+          );
+          background-size: 100% 3px;
+        }
+
+        /* Phosphor bloom glow */
+        .glow-phosphor {
+          filter: drop-shadow(0 0 6px rgba(0, 255, 102, 0.75));
+        }
+        .glow-phosphor-sm {
+          filter: drop-shadow(0 0 3px rgba(0, 255, 102, 0.6));
+        }
+        .glow-amber {
+          filter: drop-shadow(0 0 5px rgba(255, 186, 39, 0.7));
+        }
+
+        /* CRT vignette radial falloff */
+        .crt-vignette {
+          box-shadow: inset 0 0 100px rgba(0, 8, 4, 0.85);
+        }
+
+        .custom-scroll::-webkit-scrollbar {
+          display: none;
+        }
+
+        /* Stage badge styles */
+        .badge-standby { background: #010e06; border: 1px solid #0a3a1f; color: #849581; }
+        .badge-running { background: rgba(255, 186, 39, 0.15); border: 1px solid #ffba27; color: #ffba27; }
+        .badge-success { background: rgba(0, 255, 102, 0.15); border: 1px solid #00ff66; color: #00ff66; }
+        .badge-failed { background: rgba(255, 77, 77, 0.15); border: 1px solid #ff4d4d; color: #ff4d4d; }
+
+        /* CRT Analysis Complete Flash & Glow */
+        @keyframes crtAnalysisSweep {
+          0% {
+            box-shadow: 0 0 0 rgba(0, 255, 102, 0);
+          }
+          25% {
+            box-shadow: 0 0 50px rgba(0, 255, 102, 0.85), inset 0 0 35px rgba(0, 255, 102, 0.4);
+            border-color: #00ff66 !important;
+          }
+          100% {
+            box-shadow: 0 0 0 rgba(0, 255, 102, 0);
+          }
+        }
+        .analysis-glow-pulse {
+          animation: crtAnalysisSweep 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+        }
+
+        /* Screen Flash on Execution */
+        @keyframes phosphorScreenFlash {
+          0% { opacity: 0; }
+          15% { opacity: 0.22; }
+          100% { opacity: 0; }
+        }
+        .phosphor-flash-overlay {
+          position: fixed; inset: 0; background: #00ff66; pointer-events: none; z-index: 999;
+          animation: phosphorScreenFlash 0.7s ease-out forwards;
+        }
+
+        
+        /* Custom Non-Blue Sliders (Phosphor Themed) */
+        input[type=range]#rf-gain-slider {
+          writing-mode: vertical-lr;
+          direction: rtl;
+          appearance: none;
+          -webkit-appearance: none;
+          accent-color: #00ff66 !important;
+          background: transparent !important;
+          cursor: ns-resize;
+        }
+        input[type=range]#rf-gain-slider::-webkit-slider-thumb {
+          -webkit-appearance: none !important;
+          appearance: none !important;
+          width: 24px !important;
+          height: 14px !important;
+          background: #010e06 !important;
+          border: 2px solid #00ff66 !important;
+          box-shadow: 0 0 10px #00ff66 !important;
+          border-radius: 2px !important;
+          cursor: ns-resize !important;
+        }
+        input[type=range]#rf-gain-slider::-moz-range-thumb {
+          width: 24px !important;
+          height: 14px !important;
+          background: #010e06 !important;
+          border: 2px solid #00ff66 !important;
+          box-shadow: 0 0 10px #00ff66 !important;
+          border-radius: 2px !important;
+          cursor: ns-resize !important;
+        }
+        input[type=range]#slider-v1,
+        input[type=range]#slider-v2,
+        input[type=range]#slider-v3 {
+          -webkit-appearance: none;
+          appearance: none;
+          background: #010e06;
+          border: 1px solid #0a3a1f;
+          height: 6px;
+          border-radius: 3px;
+          outline: none;
+        }
+        input[type=range]#slider-v1::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          background: #00ff66;
+          border: 1px solid #ffffff;
+          box-shadow: 0 0 6px #00ff66;
+          cursor: ew-resize;
+        }
+        input[type=range]#slider-v2::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          background: #ffd700;
+          border: 1px solid #ffffff;
+          box-shadow: 0 0 6px #ffd700;
+          cursor: ew-resize;
+        }
+        input[type=range]#slider-v3::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          background: #ff4d4d;
+          border: 1px solid #ffffff;
+          box-shadow: 0 0 6px #ff4d4d;
+          cursor: ew-resize;
+        }
+
+        /* Large Studio Volume Fader */
+        input[type=range].vertical-fader {
+          writing-mode: vertical-lr;
+          direction: rtl;
+          appearance: slider-vertical;
+          -webkit-appearance: slider-vertical;
+          width: 32px;
+          height: 180px;
+          cursor: ns-resize;
+          accent-color: #00ff66;
+          background: transparent;
+        }
+        input[type=range].vertical-fader::-webkit-slider-thumb {
+          width: 28px;
+          height: 16px;
+          background: #010e06;
+          border: 2px solid #00ff66;
+          box-shadow: 0 0 8px #00ff66;
+          border-radius: 2px;
+          cursor: ns-resize;
+        }
+
+        /* Professional DAW Mixer Channel Strip & LED VU Meters */
+        .fader-plate {
+          background: linear-gradient(180deg, #02170b 0%, #010e06 100%);
+          border: 1px solid #00ff66;
+          box-shadow: -8px 0 35px rgba(0, 255, 102, 0.25), inset 0 0 25px rgba(0, 0, 0, 0.9);
+        }
+        .vu-meter-bar {
+          background: #010e06;
+          border: 1px solid #0a3a1f;
+          position: relative;
+          overflow: hidden;
+          width: 14px;
+          height: 180px;
+        }
+        .vu-led-fill {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          background: linear-gradient(to top, #00ff66 0%, #00ff66 65%, #ffd700 80%, #ff8800 90%, #ff2222 100%);
+          transition: height 0.05s ease-out;
+          box-shadow: 0 0 8px rgba(0, 255, 102, 0.6);
+        }
+        .vu-peak-line {
+          position: absolute;
+          left: 0;
+          right: 0;
+          height: 2px;
+          background: #ffff00;
+          box-shadow: 0 0 4px #ffff00;
+          transition: bottom 0.2s cubic-bezier(0.1, 0.9, 0.2, 1);
+        }
+        .daw-btn {
+          background: #010e06;
+          border: 1px solid #0a3a1f;
+          color: #849581;
+          font-size: 9px;
+          font-weight: 800;
+          padding: 2px 6px;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+        .daw-btn:hover, .daw-btn.active {
+          color: #00ff66;
+          border-color: #00ff66;
+          box-shadow: 0 0 6px rgba(0, 255, 102, 0.4);
+          background: #032612;
+        }
+        .daw-btn.active-mute {
+          color: #ff4d4d !important;
+          border-color: #ff4d4d !important;
+          box-shadow: 0 0 6px rgba(255, 77, 77, 0.4) !important;
+        }
+        .daw-btn.active-solo {
+          color: #ffd700 !important;
+          border-color: #ffd700 !important;
+          box-shadow: 0 0 6px rgba(255, 215, 0, 0.4) !important;
+        }
+
+        /* 3D Canvas Cursor */
+        .cursor-3d-orbit {
+          cursor: grab;
+        }
+        .cursor-3d-orbit:active {
+          cursor: grabbing;
+        }
+
+        
+        /* ========================================================================= */
+        /* AUTHENTIC LIGHT LABORATORY THEME (EXACT MATCH TO REFERENCE SCREENSHOT)    */
+        /* Clean white/mint technical console mounting glowing dark CRT oscilloscopes */
+        /* ========================================================================= */
+        body.light-theme {
+          background-color: #f2f8f5 !important;
+          background-image: 
+            linear-gradient(rgba(0, 168, 80, 0.05) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 168, 80, 0.05) 1px, transparent 1px) !important;
+          background-size: 20px 20px !important;
+          color: #072111 !important;
+        }
+
+        /* Top Nav Header in Light Mode */
+        body.light-theme header {
+          background-color: rgba(255, 255, 255, 0.96) !important;
+          border-color: #b4dac3 !important;
+          color: #072111 !important;
+          box-shadow: 0 2px 14px rgba(0, 120, 50, 0.06) !important;
+        }
+        body.light-theme header a div {
+          background-color: #f2f8f5 !important;
+          border-color: #00a859 !important;
+        }
+        body.light-theme header nav a {
+          color: #386043 !important;
+        }
+        body.light-theme header nav a:hover {
+          color: #008f43 !important;
+          background-color: #e6f6ed !important;
+          border-color: #00a859 !important;
+        }
+
+        /* Outer Section Cards in Light Mode */
+        body.light-theme section,
+        body.light-theme .bg-\[\#02170b\] {
+          background-color: #ffffff !important;
+          border-color: #b4dac3 !important;
+          color: #072111 !important;
+          box-shadow: 0 2px 12px rgba(0, 120, 50, 0.04) !important;
+        }
+        body.light-theme .border-\[\#0a3a1f\] {
+          border-color: #b4dac3 !important;
+        }
+        body.light-theme .text-white {
+          color: #072111 !important;
+        }
+        body.light-theme .text-\[\#849581\] {
+          color: #436b52 !important;
+        }
+        body.light-theme .text-\[\#caead5\] {
+          color: #072111 !important;
+        }
+        body.light-theme .bg-\[\#032612\] {
+          background-color: #e2f5ea !important;
+          border-color: #00a859 !important;
+        }
+        body.light-theme .crt-vignette {
+          box-shadow: none !important;
+        }
+
+        /* CRITICAL: Keep Scope & Canvas Bays DARK CRT SCREENS (Just like screenshot!) */
+        body.light-theme #hero-vector-canvas,
+        body.light-theme #hero-waterfall-canvas,
+        body.light-theme #psdCanvas,
+        body.light-theme #waveformCanvas,
+        body.light-theme #rawConstellationCanvas,
+        body.light-theme #recoveredConstellationCanvas,
+        body.light-theme .crt-scope-bay {
+          background-color: #010e06 !important;
+        }
+        body.light-theme #btnResetV123 {
+          background-color: #e2f5ea !important;
+          border-color: #00a859 !important;
+          color: #007838 !important;
+        }
+        body.light-theme #btnResetV123:hover {
+          background-color: #c8edd5 !important;
+        }
+
+        /* Form Inputs in Light Mode */
+        body.light-theme select,
+        body.light-theme input[type="text"],
+        body.light-theme input[type="number"] {
+          background-color: #ffffff !important;
+          border-color: #a4cca8 !important;
+          color: #072111 !important;
+        }
+
+        /* Badges in Light Mode */
+        body.light-theme .badge-standby {
+          background: #eef5f1 !important;
+          border: 1px solid #b4dac3 !important;
+          color: #436b52 !important;
+        }
+        body.light-theme .badge-success {
+          background: #e2f5ea !important;
+          border: 1px solid #00a859 !important;
+          color: #007838 !important;
+        }
+        body.light-theme .badge-running {
+          background: #fff8e6 !important;
+          border: 1px solid #e6a800 !important;
+          color: #a67300 !important;
+        }
+
+        /* Floating RF Gain Panel in Light Mode */
+        body.light-theme #rf-gain-panel {
+          background: #ffffff !important;
+          border-color: #00a859 !important;
+          box-shadow: -4px 0 20px rgba(0, 140, 60, 0.15) !important;
+        }
+        body.light-theme #rf-gain-panel .bg-\[\#02170b\] {
+          background: #f2f8f5 !important;
+          border-color: #b4dac3 !important;
+        }
+        body.light-theme #rf-gain-collapse-btn {
+          background: #ffffff !important;
+          border-color: #00a859 !important;
+          color: #008f43 !important;
+        }
+
+        /* Footer in Light Mode */
+        body.light-theme footer {
+          background-color: #ffffff !important;
+          border-color: #b4dac3 !important;
+          color: #436b52 !important;
+        }
+    </style>
+</head>
+<body class="bg-radar-dark text-[#caead5] antialiased min-h-screen flex flex-col crt-scanlines selection:bg-[#00ff66] selection:text-black">
+    <!-- TOP RETRO VECTOR NAV BAR -->
+    <header class="sticky top-0 z-50 bg-[#02140b]/95 backdrop-blur-md border-b border-[#0a3a1f] text-[#caead5] shadow-[0_4px_20px_rgba(0,255,102,0.07)]">
+        <div class="max-w-[1600px] mx-auto px-5 h-14 py-2 flex items-center justify-between">
+            <!-- Brand / Mode Identifier -->
+            <div class="flex items-center gap-6">
+                <a class="flex items-center gap-2.5 group" href="#overview">
+                    <div class="w-8 h-8 rounded-none border border-[#00ff66]/70 flex items-center justify-center bg-[#010e06] p-1 shadow-[0_0_8px_rgba(0,255,102,0.3)]">
+                        <!-- Vector Radar Reticle Icon -->
+                        <svg class="w-full h-full text-[#00ff66]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="10" stroke-dasharray="2 2" stroke-opacity="0.6"></circle>
+                            <circle cx="12" cy="12" r="5"></circle>
+                            <line stroke-opacity="0.8" x1="12" x2="12" y1="2" y2="22"></line>
+                            <line stroke-opacity="0.8" x1="2" x2="22" y1="12" y2="12"></line>
+                            <line id="nav-radar-sweeper" stroke="#6bff83" stroke-width="2.2" x1="12" x2="19" y1="12" y2="5"></line>
+                        </svg>
+                    </div>
+                    <div class="flex items-baseline gap-2">
+                        <span class="font-mono font-black text-sm tracking-widest text-[#00ff66] glow-phosphor-sm">DAWC<span class="text-white"> // RADAR LAB</span></span>
+                        <span class="text-[10px] font-mono text-[#00ff66] bg-[#032612] border border-[#00ff66]/40 px-1.5 py-0.2 tracking-widest font-bold">SIH26147</span>
+                    </div>
+                </a>
+                <!-- Symbol-Driven Navigation with Explanatory Tooltips & Theme-Matched Vector SVG Icons -->
+                <nav class="hidden lg:flex items-center gap-1.5 font-mono text-xs">
+                    <!-- Tab 01: Overview -->
+                    <div class="group relative">
+                        <a class="px-3 py-1.5 text-[#849581] hover:text-[#00ff66] hover:bg-[#042012] border border-transparent hover:border-[#00ff66]/40 transition-colors flex items-center gap-2" href="#overview">
+                            <svg class="w-4 h-4 text-[#00ff66]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="9" stroke-dasharray="2 2"></circle>
+                                <circle cx="12" cy="12" r="4"></circle>
+                                <path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path>
+                            </svg>
+                            <span class="text-[11px] font-bold">OVERVIEW</span>
+                        </a>
+                        <div class="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-max px-2.5 py-1 bg-[#010e06] border border-[#00ff66]/60 text-[10px] text-[#00ff66] tracking-wider opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all pointer-events-none z-50 shadow-[0_0_10px_rgba(0,255,102,0.2)]">
+                            01 // HERO VECTOR SPECTROGRAM &amp; INGESTION
+                        </div>
+                    </div>
+                    <!-- Tab 02: Telemetry -->
+                    <div class="group relative">
+                        <a class="px-3 py-1.5 text-[#849581] hover:text-[#00ff66] hover:bg-[#042012] border border-transparent hover:border-[#00ff66]/40 transition-colors flex items-center gap-2" href="#telemetry">
+                            <svg class="w-4 h-4 text-[#00ff66]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                <path d="M2 12h3l3-8 4 16 3-12 3 6h4"></path>
+                            </svg>
+                            <span class="text-[11px] font-bold">TELEMETRY</span>
+                        </a>
+                        <div class="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-max px-2.5 py-1 bg-[#010e06] border border-[#00ff66]/60 text-[10px] text-[#00ff66] tracking-wider opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all pointer-events-none z-50 shadow-[0_0_10px_rgba(0,255,102,0.2)]">
+                            02 // TELEMETRY &amp; RF LOCK METRICS
+                        </div>
+                    </div>
+                    <!-- Tab 03: PSD Spectrum -->
+                    <div class="group relative">
+                        <a class="px-3 py-1.5 text-[#849581] hover:text-[#00ff66] hover:bg-[#042012] border border-transparent hover:border-[#00ff66]/40 transition-colors flex items-center gap-2" href="#spectrum">
+                            <svg class="w-4 h-4 text-[#00ff66]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                <rect x="3" y="12" width="3" height="8" rx="0.5"></rect>
+                                <rect x="8" y="6" width="3" height="14" rx="0.5"></rect>
+                                <rect x="13" y="10" width="3" height="10" rx="0.5"></rect>
+                                <rect x="18" y="4" width="3" height="16" rx="0.5"></rect>
+                            </svg>
+                            <span class="text-[11px] font-bold">PSD FFT</span>
+                        </a>
+                        <div class="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-max px-2.5 py-1 bg-[#010e06] border border-[#00ff66]/60 text-[10px] text-[#00ff66] tracking-wider opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all pointer-events-none z-50 shadow-[0_0_10px_rgba(0,255,102,0.2)]">
+                            03 // THERMAL POWER SPECTRAL DENSITY
+                        </div>
+                    </div>
+                    <!-- Tab 04: DSP Checklist -->
+                    <div class="group relative">
+                        <a class="px-3 py-1.5 text-[#849581] hover:text-[#00ff66] hover:bg-[#042012] border border-transparent hover:border-[#00ff66]/40 transition-colors flex items-center gap-2" href="#checklist">
+                            <svg class="w-4 h-4 text-[#00ff66]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                <path d="M4 6h16M4 12h16M4 18h16"></path>
+                                <circle cx="8" cy="6" r="1.5" fill="#00ff66"></circle>
+                                <circle cx="14" cy="12" r="1.5" fill="#00ff66"></circle>
+                                <circle cx="10" cy="18" r="1.5" fill="#00ff66"></circle>
+                            </svg>
+                            <span class="text-[11px] font-bold">DSP PIPELINE</span>
+                        </a>
+                        <div class="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-max px-2.5 py-1 bg-[#010e06] border border-[#00ff66]/60 text-[10px] text-[#00ff66] tracking-wider opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all pointer-events-none z-50 shadow-[0_0_10px_rgba(0,255,102,0.2)]">
+                            04 // 10-STAGE SEQUENTIAL DSP CHECKLIST
+                        </div>
+                    </div>
+                    <!-- Tab 05: Dashboard -->
+                    <div class="group relative">
+                        <a class="px-3 py-1.5 text-[#849581] hover:text-[#00ff66] hover:bg-[#042012] border border-transparent hover:border-[#00ff66]/40 transition-colors flex items-center gap-2" href="#dashboard">
+                            <svg class="w-4 h-4 text-[#00ff66]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                <rect x="3" y="3" width="8" height="8" rx="1"></rect>
+                                <rect x="13" y="3" width="8" height="5" rx="1"></rect>
+                                <rect x="13" y="11" width="8" height="10" rx="1"></rect>
+                                <rect x="3" y="14" width="8" height="7" rx="1"></rect>
+                            </svg>
+                            <span class="text-[11px] font-bold">DASHBOARD</span>
+                        </a>
+                        <div class="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-max px-2.5 py-1 bg-[#010e06] border border-[#00ff66]/60 text-[10px] text-[#00ff66] tracking-wider opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all pointer-events-none z-50 shadow-[0_0_10px_rgba(0,255,102,0.2)]">
+                            05 // DETAILED ENGINEERING DASHBOARD
+                        </div>
+                    </div>
+                </nav>
+            </div>
+
+            <!-- Status Badges Strip -->
+            <div class="flex items-center gap-3 font-mono">
+                <div class="hidden sm:flex items-center gap-2 px-2.5 py-1 bg-[#010e06] border border-[#00ff66]/40 text-xs text-[#00ff66] font-bold">
+                    <span>✓ DSP ENGINE: OPERATIONAL</span>
+                </div>
+                <div class="hidden sm:flex items-center gap-2 px-2.5 py-1 bg-[#010e06] border border-[#6bff83]/40 text-xs text-[#6bff83] font-bold">
+                    <span>✓ 258/258 Tests Passed</span>
+                </div>
+                <div class="group relative flex items-center gap-2 px-2.5 py-1 bg-[#010e06] border border-[#0a3a1f] text-xs font-mono cursor-help">
+                    <span id="status-pulse-dot" class="w-2 h-2 rounded-full bg-[#00ff66] animate-pulse shadow-[0_0_8px_#00ff66]"></span>
+                    <span id="rx-status-text" class="text-[#00ff66] font-bold text-[11px] tracking-wide">READY</span>
+                    <span class="text-[#0e4b25]">|</span>
+                    <span id="rx-latency-text" class="text-[#6bff83] text-[11px]">0.0ms</span>
+                </div>
+                <button id="top-sweep-btn" class="inline-flex items-center gap-1.5 px-4 py-1.5 bg-[#00ff66] hover:bg-[#6bff83] text-[#010e06] text-xs font-mono font-extrabold border border-[#00ff66] shadow-[0_0_15px_rgba(0,255,102,0.4)] transition-all uppercase tracking-wider cursor-pointer">
+                    <span>⚡</span>
+                    <span>RUN ANALYSIS</span>
+                </button>
+            </div>
         </div>
-      </div>
-      <div class="header-status-strip">
-        <div id="headerDspStatus" class="status-badge green" title="Comprehensive DSP Engine: Modules 1–10 Architecture">✓ DSP ENGINE: OPERATIONAL</div>
-        <div class="status-badge cyan">✓ 258/258 Tests Passed</div>
-        <a href="/experimental" class="status-badge radar-link-badge" style="text-decoration: none; display: inline-flex; align-items: center; gap: 7px; font-weight: 800; font-size: 0.82rem; border: 1.5px solid #00ff66; color: #00ff66; background: rgba(0, 255, 102, 0.12); padding: 5px 12px; border-radius: 6px; letter-spacing: 0.5px; box-shadow: 0 0 12px rgba(0, 255, 102, 0.28); transition: all 0.2s ease;" title="Switch to Tactical Radar LabView (Phosphor CRT Oscilloscope & Waterfall Console)">
-          <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #00ff66; box-shadow: 0 0 8px #00ff66;"></span>
-          <span>RADAR LABVIEW</span>
-          <span style="font-size: 0.68rem; background: #00ff66; color: #010e06; padding: 1px 5px; border-radius: 3px; font-weight: 900;">LIVE</span>
-        </a>
-        <button id="btnThemeToggle" class="btn-theme-toggle" title="Switch Theme">
-          <span id="themeToggleIcon">🌙</span> <span id="themeToggleText">Dark Mode</span>
-        </button>
-      </div>
     </header>
 
-    <!-- ========================================================================
-         STEP 1: SIGNAL INGESTION & PIPELINE EXECUTION
-         ======================================================================== -->
-    <section class="control-card">
-      <div class="control-card-header">
-        <div class="step-indicator">
-          <span class="step-number">1</span>
-          <span class="step-title">Automated Signal Ingestion &amp; Blind Analysis</span>
-        </div>
-        <div id="activeSignalLabel" class="active-signal-tag">
-          Tactical VHF QPSK Carrier (142.850 MHz, 1200 Sa)
-        </div>
-      </div>
+    <!-- MAIN VIEWPORT -->
+    <main class="flex-1 max-w-[1600px] w-full mx-auto px-5 py-5 space-y-6">
+        
+        <!-- EXPANDED STARTUP HERO SECTION: RADAR RETICLE CRT CONTAINER -->
+        <section class="relative bg-[#02170b] border border-[#0a3a1f] text-[#caead5] rounded-none overflow-hidden shadow-[0_0_40px_rgba(0,255,102,0.08)] crt-vignette min-h-[580px] flex flex-col justify-between" id="overview">
+            <div class="absolute top-2 left-3 text-[10px] font-mono text-[#00ff66]/60 select-none tracking-widest">┌ [00° AZ // RADAR-CH1]</div>
+            <div class="absolute top-2 right-3 text-[10px] font-mono text-[#00ff66]/60 select-none tracking-widest">[90° AZ // SCAN] ┐</div>
 
-      <!-- Main Upload & Auto-Run Area: Single Step Ingestion -->
-      <div class="upload-dropzone" id="uploadDropZone" title="Drop or select raw signal file for instant blind calculation">
-        <input type="file" id="fileUploadInput" accept=".json,.iq,.wav,.bin,.dat" style="display:none;">
-        <div class="dropzone-content">
-          <div class="upload-glow-icon">⚡</div>
-          <div class="upload-text-group">
-            <h3 class="upload-main-heading">Upload Signal File (.iq / .wav / .json)</h3>
-            <p class="upload-sub-heading">Drop your file here or click to browse. The system automatically detects sampling rate, carrier frequency, AMC modulation, demodulates, de-interleaves, and decodes FEC completely on its own.</p>
-          </div>
-          <button type="button" class="btn-primary-run" id="btnUploadFileTrigger">
-            <span>📂</span> Choose Signal File
-          </button>
-        </div>
-      </div>
+            <!-- Main Hero Header -->
+            <div class="relative p-6 sm:p-8 border-b border-[#0a3a1f] flex flex-col xl:flex-row gap-6 items-start xl:items-center justify-between bg-gradient-to-b from-[#032612]/30 to-transparent">
+                <div class="space-y-3 max-w-3xl">
+                    <div class="flex flex-wrap items-center gap-2.5 text-xs font-mono">
+                        <span class="px-2.5 py-0.5 bg-[#010e06] text-[#00ff66] border border-[#00ff66]/50 text-[10px] font-bold tracking-widest uppercase shadow-[0_0_8px_rgba(0,255,102,0.2)]">
+                            SIH26147 // AUTOMATED SIGNAL INTELLIGENCE
+                        </span>
+                        <span class="px-2.5 py-0.5 bg-[#032612] text-[#6bff83] border border-[#00ff66]/40 text-[10px] font-bold flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-[#00ff66] animate-pulse shadow-[0_0_8px_#00ff66]"></span> BLIND DEMODULATION &amp; PROTOCOL RECOVERY
+                        </span>
+                    </div>
+                    <h1 class="font-mono font-extrabold text-3xl sm:text-4xl text-white tracking-tight flex flex-wrap items-center gap-3">
+                        <span>DAWC: DIGITAL AUTOMATED WAVEFORM CLASSIFIER</span>
+                        <span class="text-xs font-mono font-bold px-2.5 py-1 bg-[#032612] text-[#00ff66] border border-[#00ff66]/60 shadow-[0_0_10px_rgba(0,255,102,0.3)]">RADAR LAB</span>
+                    </h1>
+                    <p class="text-xs sm:text-sm text-[#849581] font-mono leading-relaxed max-w-2xl">
+                        Cathode ray phosphor decomposition &amp; thermal spectrum synthesizer. Continuous 512-point sample telemetry, dynamic sweep dispersion, and continuous audio/IR spectrum waterfall raster analysis.
+                    </p>
+                </div>
 
-      <!-- Quick Sample & Action Bar -->
-      <div class="quick-action-bar">
-        <div class="quick-sample-group">
-          <span class="quick-sample-lbl">OR TEST SAMPLE CAPTURE:</span>
-          <select id="signalPresetSelect" class="form-select sample-select">
-            <option value="qpsk_1200" selected>📡 Tactical VHF QPSK Carrier (142.850 MHz, 1200 Sa)</option>
-            <option value="qam16_1600">⚡ Avionics 16-QAM Wideband Grid (1600 Sa)</option>
-            <option value="psk8_1200">🎯 Deep-Space 8-PSK Phase Ring (1200 Sa)</option>
-            <option value="bpsk_1000">📻 Military BPSK Jam-Resistant Burst (1000 Sa)</option>
-            <option value="fsk_1200">🛰️ Continuous-Phase GFSK Telemetry (1200 Sa)</option>
-            <option value="radioml_128">🔬 RadioML 2016.10a Measured SDR Capture (128 Sa)</option>
-            <option value="radar_lfm_1200">🛸 RadChar: Tactical LFM Radar Chirp (1200 Sa)</option>
-            <option value="radar_barker_1300">🎯 RadChar: X-Band Barker-13 Coded Radar Pulse (1300 Sa)</option>
-            <option value="zero_power">⚠️ Zero-Power Noise (Rejection Test)</option>
-            <option value="dc_offset">⚠️ Pure DC Offset (Rejection Test)</option>
-          </select>
-          <button id="btnRunPipeline" class="btn-secondary auto-run-btn">
-            <span>⚡</span> RUN COMPLETE ANALYSIS
-          </button>
-        </div>
-
-        <button id="btnReloadPreset" class="btn-secondary" style="display:none;">
-          <span>🔄</span> Reset
-        </button>
-      </div>
-
-      <!-- Optional Collapsible Advanced Controls (Zero Clutter Default) -->
-      <details class="advanced-tuning-accordion">
-        <summary class="advanced-tuning-summary">⚙️ Optional Parameter Overrides (Default: 100% Automated Blind Detection)</summary>
-        <div class="advanced-tuning-body">
-          <div class="form-group">
-            <label class="form-label">Sampling Rate Fs (Hz)</label>
-            <input type="number" id="inputFs" class="form-input" placeholder="Auto-calculated" value="20000000">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Center Freq Fc (Hz)</label>
-            <input type="number" id="inputFc" class="form-input" placeholder="Auto-calculated" value="142850000">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Modulation Override</label>
-            <select id="selectModulation" class="form-select">
-              <option value="" selected>AUTO (Blind AMC Classification)</option>
-              <option value="QPSK">QPSK</option>
-              <option value="BPSK">BPSK</option>
-              <option value="8PSK">8PSK</option>
-              <option value="QAM16">QAM16</option>
-              <option value="QAM64">QAM64</option>
-              <option value="GFSK">GFSK</option>
-              <option value="CPFSK">CPFSK</option>
-            </select>
-          </div>
-        </div>
-      </details>
-
-      <!-- Alert Banner -->
-      <div id="alertBanner" class="alert-banner"></div>
-    </section>
-
-    <!-- ========================================================================
-         STEP 2: RF LABORATORY INSTRUMENT TELEMETRY STRIP (BLACK & WHITE / SOBER)
-         ======================================================================== -->
-    <!-- ========================================================================
-         STEP 2: RF LABORATORY INSTRUMENT TELEMETRY STRIP (EXACT REFERENCE REPLICA)
-         ======================================================================== -->
-    <section class="telemetry-strip">
-      <!-- Card 1: Center Frequency -->
-      <div class="telemetry-card card-freq">
-        <div class="telemetry-card-header">
-          <span>EST. CENTER FREQ</span>
-          <span class="inst-badge-mint" id="telemetryAfcBadge"><span class="dot">●</span> AFC LOCKED</span>
-        </div>
-        <div class="telemetry-card-body">
-          <span class="inst-val-num" id="telemetryFcVal">142.850</span>
-          <span class="inst-unit-tag">MHz</span>
-          <span class="inst-sub-cyan" id="telemetryBandName">VHF Tactical Band</span>
-        </div>
-        <div class="inst-details-row">
-          <div class="inst-col-item">
-            <span>IF OFFSET: <b id="telemetryIfOffset">+120.00</b></span>
-            <span class="sub-lbl">kHz</span>
-          </div>
-          <div class="inst-col-item">
-            <span>BW: <b id="telemetryBw">2.15</b></span>
-            <span class="sub-lbl">MHz</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Card 2: Sampling Rate -->
-      <div class="telemetry-card card-fs">
-        <div class="telemetry-card-header">
-          <span>SAMPLING RATE<br>(FS)</span>
-          <span class="inst-badge-sky" id="telemetryFsBadge">OVERSAMPLED<br>4x</span>
-        </div>
-        <div class="telemetry-card-body">
-          <span class="inst-val-num" id="telemetryFsVal">20.00</span>
-          <span class="inst-unit-tag">MSps</span>
-          <span class="inst-sub-gray">Decimation: 1:1</span>
-        </div>
-        <div class="inst-details-row">
-          <div class="inst-col-item">
-            <span>NYQUIST BW: <b id="telemetryNyquist">10.00</b></span>
-            <span class="sub-lbl">MHz</span>
-          </div>
-          <div class="inst-col-item">
-            <span>FPGA FIFO:</span>
-            <b class="ok-green">OK</b>
-          </div>
-        </div>
-      </div>
-
-      <!-- Card 3: Dynamic Range / SNR -->
-      <div class="telemetry-card card-snr">
-        <div class="telemetry-card-header">
-          <span>DYNAMIC RANGE / SNR</span>
-          <span class="inst-badge-sky" id="telemetrySnrBadge">HI-FIDELITY</span>
-        </div>
-        <div class="telemetry-card-body">
-          <span class="inst-val-num" id="telemetrySnrVal">84.2</span>
-          <span class="inst-unit-tag">dB FS</span>
-          <span class="inst-sub-green" id="telemetrySinadVal">+28.4 dB SINAD</span>
-        </div>
-        <div class="inst-details-row">
-          <div class="inst-col-item">
-            <span>NOISE FLOOR: <b id="telemetryNoiseFloor">-108.4</b></span>
-            <span class="sub-lbl">dBm</span>
-          </div>
-          <div class="inst-col-item">
-            <span>ENOB: <b id="telemetryEnob">13.8</b></span>
-            <span class="sub-lbl">Bits</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Card 4: Energy Detector -->
-      <div class="telemetry-card card-energy">
-        <div class="telemetry-card-header">
-          <span>ENERGY DETECTOR</span>
-          <span class="inst-badge-amber" id="telemetryEnergyBadge"><span class="dot">●</span> ACTIVE EMITTER</span>
-        </div>
-        <div class="telemetry-card-body">
-          <span class="inst-val-num amber" id="telemetryDeltaVal">+14.6</span>
-          <span class="inst-unit-tag amber">dB Delta</span>
-          <span class="inst-sub-gray">P_FA: 10^-6</span>
-        </div>
-        <div class="inst-details-row">
-          <div class="inst-col-item">
-            <span>THRESHOLD: <b id="telemetryThreshold">+6.0 dB</b></span>
-          </div>
-          <div class="inst-col-item">
-            <span>BURST <b id="telemetryBurstState">BURST #04</b></span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ========================================================================
-         STEP 3: LABORATORY POWER SPECTRAL DENSITY (PSD / FFT)
-         ======================================================================== -->
-    <section class="psd-instrument-card">
-      <div class="psd-instrument-header">
-        <div class="psd-title-group">
-          <span class="psd-main-title"><span>📊</span> POWER SPECTRAL DENSITY (PSD / FFT)</span>
-          <div class="psd-chips-group">
-            <span class="psd-chip">4096-PT FFT</span>
-            <span class="psd-chip" id="psdSpanChip">SPAN: 10 MHz</span>
-            <span class="psd-chip">RBW: 4.88 kHz</span>
-            <span class="psd-chip">WIN: BLACKMAN-HARRIS</span>
-          </div>
-        </div>
-        <div class="psd-toolbar">
-          <button class="psd-btn active" id="btnPeakTrace">PEAK TRACE</button>
-          <button class="psd-btn" id="btnAvgTrace">AVG (EMA: 16)</button>
-          <button class="psd-btn" id="btnAutoScale">AUTO-SCALE</button>
-        </div>
-      </div>
-
-      <div class="psd-canvas-wrapper">
-        <div class="psd-hud-marker" id="psdHudMarker">
-          <span class="hud-marker-dot"></span>
-          <span>Marker 1: PEAK <b id="markerPeakVal">-18.2 dBFS</b> @ <b id="markerFreqVal">142.850 MHz</b> | OBW: <b id="markerObwVal">1.75 MHz</b> | Spur Suppr: <b id="markerSpurVal">-62.0 dB</b></span>
-        </div>
-        <canvas id="psdCanvas"></canvas>
-      </div>
-
-      <div class="psd-freq-axis">
-        <span id="freqTick1">139.850 MHz</span>
-        <span id="freqTick2">140.850 MHz</span>
-        <span id="freqTick3">141.850 MHz</span>
-        <span class="center-freq-chip" id="freqTickCenter">Fc: 142.850 MHz (CENTER)</span>
-        <span id="freqTick5">143.850 MHz</span>
-        <span id="freqTick6">144.850 MHz</span>
-        <span id="freqTick7">145.850 MHz</span>
-      </div>
-    </section>
-
-    <!-- ========================================================================
-         STEP 3B: TIME-FREQUENCY WATERFALL (SPECTROGRAM / STFT)
-         ======================================================================== -->
-    <section class="psd-instrument-card waterfall-card">
-      <div class="psd-instrument-header">
-        <div class="psd-title-group">
-          <span class="psd-main-title"><span>🌊</span> TIME-FREQUENCY WATERFALL (SPECTROGRAM)</span>
-          <div class="psd-chips-group">
-            <span class="psd-chip">STFT: 256-PT FFT</span>
-            <span class="psd-chip" id="waterfallSpanChip">SPAN: 20.00 MHz</span>
-            <span class="psd-chip">WINDOW: HANNING</span>
-            <span class="psd-chip">SLICES: 64 TIME FRAMES</span>
-          </div>
-        </div>
-        <div class="waterfall-scale-bar-wrapper">
-          <span class="waterfall-scale-lbl">-85 dBFS</span>
-          <div class="waterfall-thermal-bar" title="RF Thermal Heatmap Scale"></div>
-          <span class="waterfall-scale-lbl">0 dBFS</span>
-        </div>
-      </div>
-
-      <div class="waterfall-canvas-wrapper">
-        <canvas id="waterfallCanvas"></canvas>
-      </div>
-
-      <div class="waterfall-axis-bar">
-        <span id="waterfallTickLeft">-Fs/2 (Lower Band Edge)</span>
-        <span class="center-freq-chip" id="waterfallCenterTick">Fc: 142.850 MHz</span>
-        <span id="waterfallTickRight">+Fs/2 (Upper Band Edge)</span>
-      </div>
-    </section>
-
-
-    <!-- ========================================================================
-         STEP 4: COMPANION SIGNAL VISUALIZERS (WAVEFORM & CONSTELLATIONS)
-         ======================================================================== -->
-    <section class="companion-plots-grid">
-      <!-- Plot 1: Time Domain Waveform -->
-      <div class="plot-card">
-        <div class="plot-card-header">
-          <span class="plot-title"><span>📈</span> Time-Domain Waveform</span>
-          <span class="plot-badge" id="waveformSampleBadge">1200 Samples</span>
-        </div>
-        <div class="canvas-container">
-          <canvas id="waveformCanvas"></canvas>
-        </div>
-        <div class="plot-footer">
-          <div>CHANNELS: <span class="val">I(t) [White] &amp; Q(t) [Muted]</span></div>
-          <div>NORM: <span class="val">Unit Variance</span></div>
-        </div>
-      </div>
-
-      <!-- Plot 2: Raw Signal Constellation -->
-      <div class="plot-card">
-        <div class="plot-card-header">
-          <span class="plot-title"><span>🎯</span> Raw Constellation (I vs Q)</span>
-          <span class="plot-badge">Raw Samples</span>
-        </div>
-        <div class="canvas-container">
-          <canvas id="rawConstellationCanvas"></canvas>
-        </div>
-        <div class="plot-footer">
-          <div>POINTS: <span class="val" id="rawConstellationCount">—</span></div>
-          <div>STATE: <span class="val" id="rawCarrierState">Unsynchronized</span></div>
-        </div>
-      </div>
-
-      <!-- Plot 3: Synchronized Symbol Constellation -->
-      <div class="plot-card">
-        <div class="plot-card-header">
-          <span class="plot-title"><span>✨</span> Synchronized Symbol Constellation</span>
-          <span class="plot-badge" id="recoveredSymbolBadge">Awaiting Run</span>
-        </div>
-        <div class="canvas-container">
-          <canvas id="recoveredConstellationCanvas"></canvas>
-        </div>
-        <div class="plot-footer">
-          <div>RECOVERED: <span class="val" id="recoveredSymbolCount">0 Syms</span></div>
-          <div>LOCK: <span class="val" id="costasLockStatus">Awaiting Execution</span></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ========================================================================
-         STEP 2: SEQUENTIAL SIGNAL PROCESSING STAGES CHECKLIST
-         ======================================================================== -->
-    <section class="pipeline-checklist-card">
-      <div class="control-card-header" style="border:none; padding-bottom:0;">
-        <div class="step-indicator">
-          <span class="step-number">2</span>
-          <span class="step-title">Sequential Signal Processing Stages</span>
-        </div>
-        <div id="overallStatusBadge" class="status-badge cyan">STANDBY</div>
-      </div>
-
-      <div class="checklist-strip">
-        <div class="stage-box" data-stage="1" title="Click to inspect Stage 01 telemetry">
-          <span class="stage-num">01</span>
-          <span class="stage-name">Canonical IQ</span>
-          <span id="badgeM1" class="stage-status-badge not_executed">STANDBY</span>
-        </div>
-        <div class="stage-box" data-stage="2" title="Click to inspect Stage 02 telemetry">
-          <span class="stage-num">02</span>
-          <span class="stage-name">Observations</span>
-          <span id="badgeM2" class="stage-status-badge not_executed">STANDBY</span>
-        </div>
-        <div class="stage-box" data-stage="3" title="Click to inspect Stage 03 telemetry">
-          <span class="stage-num">03</span>
-          <span class="stage-name">Modulation AMC</span>
-          <span id="badgeM3" class="stage-status-badge not_executed">STANDBY</span>
-        </div>
-        <div class="stage-box" data-stage="4" title="Click to inspect Stage 04 telemetry">
-          <span class="stage-num">04</span>
-          <span class="stage-name">Parameters</span>
-          <span id="badgeM4" class="stage-status-badge not_executed">STANDBY</span>
-        </div>
-        <div class="stage-box" data-stage="5" title="Click to inspect Stage 05 telemetry">
-          <span class="stage-num">05</span>
-          <span class="stage-name">Carrier Sync</span>
-          <span id="badgeM5" class="stage-status-badge not_executed">STANDBY</span>
-        </div>
-        <div class="stage-box" data-stage="6" title="Click to inspect Stage 06 telemetry">
-          <span class="stage-num">06</span>
-          <span class="stage-name">SNR Quality</span>
-          <span id="badgeM6" class="stage-status-badge not_executed">STANDBY</span>
-        </div>
-        <div class="stage-box" data-stage="7" title="Click to inspect Stage 07 telemetry">
-          <span class="stage-num">07</span>
-          <span class="stage-name">Soft Bits</span>
-          <span id="badgeM7" class="stage-status-badge not_executed">STANDBY</span>
-        </div>
-        <div class="stage-box" data-stage="8" title="Click to inspect Stage 08 telemetry">
-          <span class="stage-num">08</span>
-          <span class="stage-name">Blind FEC</span>
-          <span id="badgeM8" class="stage-status-badge not_executed">STANDBY</span>
-        </div>
-        <div class="stage-box" data-stage="9" title="Click to inspect Stage 09 telemetry">
-          <span class="stage-num">09</span>
-          <span class="stage-name">Frame Structure</span>
-          <span id="badgeM9" class="stage-status-badge not_executed">STANDBY</span>
-        </div>
-        <div class="stage-box" data-stage="10" title="Click to inspect Stage 10 telemetry">
-          <span class="stage-num">10</span>
-          <span class="stage-name">CRC &amp; Interleave</span>
-          <span id="badgeM10" class="stage-status-badge not_executed">STANDBY</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- ========================================================================
-         STEP 3: DETAILED ENGINEERING RESULTS DASHBOARD
-         ======================================================================== -->
-    <section class="results-dashboard-card">
-      <div class="control-card-header" style="border-bottom: 1px solid var(--border-card); padding-bottom: 12px;">
-        <div class="step-indicator">
-          <span class="step-number">3</span>
-          <span class="step-title">Telemetry &amp; Protocol Recovery Breakdown</span>
-        </div>
-        <div class="header-status-strip">
-          <span class="status-badge green">✓ 6 Analysis Domains Synchronized</span>
-        </div>
-      </div>
-
-      <div class="dashboard-grid">
-        <!-- Card A: Executive Summary -->
-        <div class="result-card card-accent-blue">
-          <div class="result-card-header">
-            <span>EXECUTIVE CLASSIFICATION SUMMARY</span>
-            <span id="resExecMod" class="status-badge cyan" style="padding:2px 7px;">UNKNOWN</span>
-          </div>
-          <div class="metric-row"><span class="metric-key">Pipeline Status:</span><span class="metric-val" id="resStatusVal">Awaiting Run</span></div>
-          <div class="metric-row"><span class="metric-key">Estimated SNR:</span><span class="metric-val" id="resSnrVal">—</span></div>
-          <div class="metric-row"><span class="metric-key">Baud Rate (Rs):</span><span class="metric-val" id="resBaudVal">—</span></div>
-          <div class="metric-row"><span class="metric-key">Top FEC Code:</span><span class="metric-val" id="resFecVal">—</span></div>
-          <div class="metric-row"><span class="metric-key">Detected CRC:</span><span class="metric-val" id="resCrcVal">—</span></div>
-          <div class="metric-row"><span class="metric-key">Interleaver Width:</span><span class="metric-val" id="resInterleaverVal">—</span></div>
-        </div>
-
-        <!-- Card C: Modulation AMC -->
-        <div class="result-card card-accent-mint">
-          <div class="result-card-header">
-            <span>AUTOMATIC MODULATION RECOGNITION (AMC)</span>
-            <span class="status-badge green" style="padding:2px 7px;">69.00% Benchmark</span>
-          </div>
-          <div class="metric-row"><span class="metric-key">RF Engine A (24 Features):</span><span class="metric-val" id="amcRfVal">—</span></div>
-          <div class="metric-row"><span class="metric-key">CNN Engine B (Raw IQ):</span><span class="metric-val" id="amcCnnVal">—</span></div>
-          <div class="metric-row"><span class="metric-key">Model Weights Status:</span><span class="metric-val" id="amcWeightsVal">HONEST REPORT</span></div>
-          <div class="metric-row"><span class="metric-key">Fusion Status:</span><span class="metric-val" style="color:var(--accent-amber);">NOT_YET_VALIDATED</span></div>
-          <div class="metric-row"><span class="metric-key">Calibrated Confidence:</span><span class="metric-val">NOT_YET_DEFINED</span></div>
-        </div>
-
-        <!-- Card D: Parameter Estimation -->
-        <div class="result-card card-accent-blue">
-          <div class="result-card-header">
-            <span>CARRIER &amp; SYMBOL PARAMETERS</span>
-            <span class="status-badge cyan" style="padding:2px 7px;">Cyclic Ciblat</span>
-          </div>
-          <div class="metric-row"><span class="metric-key">Symbol Rate:</span><span class="metric-val" id="paramRsVal">—</span></div>
-          <div class="metric-row"><span class="metric-key">Samples / Symbol (SPS):</span><span class="metric-val" id="paramSpsVal">—</span></div>
-          <div class="metric-row"><span class="metric-key">Carrier Offset (CFO):</span><span class="metric-val" id="paramCfoVal">—</span></div>
-          <div class="metric-row"><span class="metric-key">Occupied Bandwidth:</span><span class="metric-val" id="paramBwVal">—</span></div>
-          <div class="metric-row"><span class="metric-key">FSK Frequency Separation:</span><span class="metric-val" id="paramFskVal">N/A (PSK/QAM)</span></div>
-        </div>
-
-        <!-- Card E: Synchronization & Bitstream -->
-        <div class="result-card card-accent-mint">
-          <div class="result-card-header">
-            <span>SYNCHRONIZED BITSTREAM DEMAPPING</span>
-            <span id="badgeBitCount" class="status-badge green" style="padding:2px 7px;">0 Bits</span>
-          </div>
-          <div class="metric-row"><span class="metric-key">CFO Compensated:</span><span class="metric-val" id="recCfoVal">—</span></div>
-          <div class="metric-row"><span class="metric-key">Costas Phase Estimate:</span><span class="metric-val" id="recPhaseVal">—</span></div>
-          <div class="metric-row"><span class="metric-key">Gardner Timing Offset:</span><span class="metric-val" id="recTimingVal">—</span></div>
-          <div class="bitstream-container" id="demodBitStreamBox">// No demodulated bits available</div>
-        </div>
-
-        <!-- Card G: Soft Bits & Reliability -->
-        <div class="result-card card-accent-purple">
-          <div class="result-card-header">
-            <span>SOFT-DECISION DEMAPPING &amp; LLR</span>
-            <span class="status-badge purple" style="padding:2px 7px;">Exact LLR</span>
-          </div>
-          <div class="metric-row"><span class="metric-key">Metric Type:</span><span class="metric-val" id="softMetricTypeVal">LLR (Exact Gaussian)</span></div>
-          <div class="metric-row"><span class="metric-key">Hard Decision Agreement:</span><span class="metric-val" id="softAgreementVal">—</span></div>
-          <div class="metric-row"><span class="metric-key">Noise Parameter N0:</span><span class="metric-val" id="softN0Val">—</span></div>
-          <div class="bitstream-container" id="softStreamBox">// Soft values awaiting execution</div>
-        </div>
-
-        <!-- Card I/J: Framing, GF(2) & CRC -->
-        <div class="result-card card-accent-amber">
-          <div class="result-card-header">
-            <span>FRAME STRUCTURE &amp; CRC INTEGRITY</span>
-            <span class="status-badge green" style="padding:2px 7px;">GF(2) Algebra</span>
-          </div>
-          <div class="metric-row"><span class="metric-key">Frame Period P:</span><span class="metric-val" id="framingPeriodVal">—</span></div>
-          <div class="metric-row"><span class="metric-key">Frame Phase φ*:</span><span class="metric-val" id="framingPhaseVal">—</span></div>
-          <div class="metric-row"><span class="metric-key">GF(2) Parity Relations:</span><span class="metric-val" id="gf2RelationsVal">—</span></div>
-          <div class="metric-row"><span class="metric-key">CRC Candidate:</span><span class="metric-val" id="crcPolyVal">—</span></div>
-          <div class="metric-row"><span class="metric-key">CRC Acceptance Rate:</span><span class="metric-val" id="crcRateVal">—</span></div>
-        </div>
-
-        <!-- Card K: Bit Stream Correlation & Protocol Demarcation (PS Tasks iii, iv, v) -->
-        <div class="result-card card-accent-blue" style="grid-column: span 2;">
-          <div class="result-card-header">
-            <span>BIT STREAM CORRELATION &amp; PROTOCOL DEMARCATION (HEADER VS. PAYLOAD)</span>
-            <span class="status-badge cyan" id="corrSyncBadge">R_xy = 0.985 (SYNC LOCKED)</span>
-          </div>
-          <div class="correlation-partition-bar">
-            <div class="part-item part-sync" title="Known sync word cross-correlation marker">
-              <span class="part-lbl">SYNC / PREAMBLE</span>
-              <span class="part-sub">Bits 0–31 (32b)</span>
-              <span class="part-stat">R_xy = 0.985</span>
+                <!-- Quick Controls (PHOS-BURST REMOVED) -->
+                <div class="flex flex-wrap items-center gap-4 font-mono text-xs w-full xl:w-auto">
+                    <button id="btn-auto-sweep" class="group relative px-3.5 py-2.5 bg-[#010e06] hover:bg-[#032612] border border-[#00ff66]/50 text-[#00ff66] text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-[0_0_10px_rgba(0,255,102,0.15)]" type="button">
+                        <span id="auto-sweep-indicator" class="w-2.5 h-2.5 rounded-full bg-[#00ff66] shadow-[0_0_6px_#00ff66]"></span>
+                        <span id="auto-sweep-label">AUTO-SWEEP</span>
+                    </button>
+                </div>
             </div>
-            <div class="part-item part-hdr" title="Demarcated protocol header fields">
-              <span class="part-lbl">FRAME HEADER</span>
-              <span class="part-sub">Bits 32–63 (32b)</span>
-              <span class="part-stat">Seq #04 • Len: 32</span>
+
+            <!-- HERO CENTERPIECE: EXPANDED ACOUSTIC VECTOR SPECTROGRAM & WATERFALL -->
+            <div class="bg-[#010e06] p-6 space-y-4 flex-1 flex flex-col justify-between">
+                <div class="flex flex-wrap items-center justify-between text-[11px] font-mono gap-2 border-b border-[#0a3a1f] pb-2.5">
+                    <div class="flex items-center gap-3">
+                        <span class="text-[#00ff66] text-base font-bold">∿</span>
+                        <span class="text-white font-bold tracking-wider uppercase text-xs">ACOUSTIC VECTOR SPECTROGRAM &amp; THERMAL IR WATERFALL</span>
+                        <span class="text-[10px] font-mono text-[#00ff66] bg-[#032612] border border-[#00ff66]/40 px-2 py-0.5 font-bold">512-PT CONTINUOUS</span>
+                    </div>
+                    <div class="flex items-center gap-4 text-[10px] text-[#849581]">
+                        <span>BAND: <strong id="band-range-text" class="text-[#00ff66] font-normal">20Hz - 22kHz</strong></span>
+                        <span>•</span>
+                        <span>HEATMAP: <strong class="text-[#ff7700] font-bold">AUDIO THERMAL IR (RED-GREEN)</strong></span>
+                        <span>•</span>
+                        <span>SWEEP: <strong id="sweep-status-tag" class="text-[#6bff83] font-normal">ACTIVE DYNAMIC</strong></span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch flex-1">
+                    <div class="lg:col-span-9 flex flex-col gap-3">
+                        <!-- Taller Hero Canvas -->
+                        <div class="h-44 sm:h-56 lg:h-64 w-full bg-[#010e06] border border-[#0a3a1f] crt-scope-bay relative overflow-hidden flex items-center px-1 shadow-inner">
+                            <canvas id="hero-vector-canvas" class="w-full h-full relative z-10 block"></canvas>
+                        </div>
+                        <!-- Tactical SDR Waterfall Spectrogram Canvas -->
+                        <div class="h-28 w-full bg-[#010e06] border border-[#0a3a1f] crt-scope-bay p-1.5 flex flex-col justify-between overflow-hidden relative shadow-inner">
+                            <div class="flex items-center justify-between text-[9px] font-mono text-[#849581] z-10 px-1 pb-1 border-b border-[#0a3a1f]/60">
+                                <span class="flex items-center gap-2">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-[#00ff66] animate-pulse"></span>
+                                    <span>HISTORIC SDR DENSITY WATERFALL (-5.0s to NOW)</span>
+                                </span>
+                                <span class="text-[#00ff66] font-bold">TACTICAL SPECTRA-FLARE (DARK NAVY / PHOSPHOR / AMBER)</span>
+                            </div>
+                            <div class="relative w-full flex-1 overflow-hidden">
+                                <canvas id="hero-waterfall-canvas" class="w-full h-full block"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-3 flex flex-col justify-between gap-2.5 font-mono text-center">
+                        <!-- Header with Reset Button -->
+                        <div class="flex items-center justify-between text-[10px] pb-1 border-b border-[#0a3a1f]">
+                            <span class="text-white font-bold tracking-wider text-[9px] uppercase">HARMONIC SYNTHESIZER</span>
+                            <button id="btnResetV123" class="px-2 py-0.5 bg-[#010e06] hover:bg-[#032612] border border-[#00ff66]/50 text-[#00ff66] text-[9px] font-bold cursor-pointer transition-colors shadow-sm" title="Reset V1-V2-V3 to Default Calibration">
+                                ↺ RESET
+                            </button>
+                        </div>
+
+                        <!-- V1: Sub-band Slider -->
+                        <div class="bg-[#02170b] border border-[#0a3a1f] p-2.5 flex flex-col justify-between flex-1 hover:border-[#00ff66]/40 transition-colors">
+                            <div class="w-full flex items-center justify-between text-[10px]">
+                                <span class="text-[#00ff66] font-bold">[ ∇₁ ] SUB-BAND</span>
+                                <span id="label-v1-freq" class="text-white font-semibold">64 Hz</span>
+                            </div>
+                            <div class="w-full my-1.5 flex items-center px-0.5">
+                                <input id="slider-v1" type="range" min="0" max="100" value="50" step="1" class="w-full h-1.5 bg-[#010e06] border border-[#0a3a1f] accent-[#00ff66] cursor-pointer" title="Adjust Sub-Band Ripple Frequency" />
+                            </div>
+                            <div class="w-full flex justify-between items-baseline text-[9px]">
+                                <span class="text-[#849581]">ENERGY</span>
+                                <span id="gauge-subband-val" class="text-xs text-white font-bold">-6.2 dB</span>
+                            </div>
+                        </div>
+
+                        <!-- V2: Carrier Slider -->
+                        <div class="bg-[#02170b] border border-[#0a3a1f] p-2.5 flex flex-col justify-between flex-1 hover:border-[#ffd700]/40 transition-colors">
+                            <div class="w-full flex items-center justify-between text-[10px]">
+                                <span class="text-[#ffd700] font-bold">[ ∇₂ ] CARRIER</span>
+                                <span id="label-v2-freq" class="text-white font-semibold">1.2 kHz</span>
+                            </div>
+                            <div class="w-full my-1.5 flex items-center px-0.5">
+                                <input id="slider-v2" type="range" min="0" max="100" value="50" step="1" class="w-full h-1.5 bg-[#010e06] border border-[#0a3a1f] accent-[#ffd700] cursor-pointer" title="Adjust Carrier Harmonic Density" />
+                            </div>
+                            <div class="w-full flex justify-between items-baseline text-[9px]">
+                                <span class="text-[#849581]">ENERGY</span>
+                                <span id="gauge-carrier-val" class="text-xs text-white font-bold">+3.4 dB</span>
+                            </div>
+                        </div>
+
+                        <!-- V3: Sidelobe/Noise Slider -->
+                        <div class="bg-[#02170b] border border-[#0a3a1f] p-2.5 flex flex-col justify-between flex-1 hover:border-[#ff4d4d]/40 transition-colors">
+                            <div class="w-full flex items-center justify-between text-[10px]">
+                                <span class="text-[#ff4d4d] font-bold">[ ∇₃ ] SIDELOBE</span>
+                                <span id="label-v3-freq" class="text-white font-semibold">8.5 kHz</span>
+                            </div>
+                            <div class="w-full my-1.5 flex items-center px-0.5">
+                                <input id="slider-v3" type="range" min="0" max="100" value="20" step="1" class="w-full h-1.5 bg-[#010e06] border border-[#0a3a1f] accent-[#ff4d4d] cursor-pointer" title="Adjust Sidelobe Texture / Noise Floor" />
+                            </div>
+                            <div class="w-full flex justify-between items-baseline text-[9px]">
+                                <span class="text-[#849581]">ENERGY</span>
+                                <span id="gauge-sidelobe-val" class="text-xs text-white font-bold">-18.9 dB</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="part-item part-pay" title="De-interleaved recovered payload">
-              <span class="part-lbl">PAYLOAD FIELD</span>
-              <span class="part-sub">Bits 64–175 (112b)</span>
-              <span class="part-stat" id="corrPayloadStat">14 Octets FEC</span>
+            <div class="absolute bottom-2 left-3 text-[10px] font-mono text-[#00ff66]/60 select-none tracking-widest">└ [270° AZ // POLAR]</div>
+            <div class="absolute bottom-2 right-3 text-[10px] font-mono text-[#00ff66]/60 select-none tracking-widest">[180° AZ // SYNC] ┘</div>
+        </section>
+
+        <!-- STEP 1: SIGNAL INGESTION & PIPELINE EXECUTION CONTROL STRIP -->
+        <section class="bg-[#02170b] border border-[#0a3a1f] text-[#caead5] p-5 font-mono text-xs crt-vignette space-y-4">
+            <div class="flex items-center justify-between border-b border-[#0a3a1f] pb-2.5">
+                <div class="flex items-center gap-2.5">
+                    <span class="text-[#00ff66] font-bold text-sm">1</span>
+                    <span class="text-sm font-bold text-white tracking-widest uppercase">SIGNAL INGESTION &amp; EXECUTION CONTROL</span>
+                </div>
+                <div id="activeSignalLabel" class="text-[11px] text-[#00ff66] bg-[#010e06] border border-[#00ff66]/40 px-2.5 py-0.5 font-bold">
+                    Select signal preset or upload custom I/Q vector...
+                </div>
             </div>
-            <div class="part-item part-crc" title="Cyclic redundancy check FCS field">
-              <span class="part-lbl">CRC-16 FCS</span>
-              <span class="part-sub">Bits 176–191 (16b)</span>
-              <span class="part-stat" id="corrCrcStatus">CCITT [VALID]</span>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                <!-- Preset Selector -->
+                <div class="space-y-1">
+                    <label class="text-[10px] text-[#849581] font-bold uppercase">Signal Source / Preset</label>
+                    <select id="signalPresetSelect" class="w-full bg-[#010e06] text-[#caead5] text-xs font-bold p-2.5 border border-[#0a3a1f] focus:border-[#00ff66] focus:outline-none cursor-pointer">
+                        <option value="qpsk_1200" selected>📡 Tactical VHF QPSK Carrier (142.850 MHz, SNR 24 dB, 1200 Sa)</option>
+                        <option value="qam16_1600">⚡ Avionics 16-QAM Wideband Grid (SNR 26 dB, 1600 Sa)</option>
+                        <option value="psk8_1200">🎯 Deep-Space 8-PSK Phase Ring (SNR 24 dB, 1200 Sa)</option>
+                        <option value="bpsk_1000">📻 Military BPSK Jam-Resistant Burst (SNR 20 dB, 1000 Sa)</option>
+                        <option value="fsk_1200">🛰️ Continuous-Phase GFSK Telemetry (1200 Sa)</option>
+                        <option value="radioml_128">🔬 RadioML 2016.10a Measured SDR Capture @ 18 dB (128 Sa)</option>
+                        <option value="zero_power">⚠️ Zero-Power Noise (Rejection Test)</option>
+                        <option value="dc_offset">⚠️ Pure DC Offset (Rejection Test)</option>
+                    </select>
+                </div>
+
+                <!-- Fs (Hz) -->
+                <div class="space-y-1">
+                    <label class="text-[10px] text-[#849581] font-bold uppercase">Sampling Rate Fs (Hz)</label>
+                    <input type="number" id="inputFs" class="w-full bg-[#010e06] text-white text-xs font-bold p-2.5 border border-[#0a3a1f] focus:border-[#00ff66] focus:outline-none" value="20000000" placeholder="e.g. 20000000"/>
+                </div>
+
+                <!-- Fc (Hz) -->
+                <div class="space-y-1">
+                    <label class="text-[10px] text-[#849581] font-bold uppercase">Center Freq Fc (Hz)</label>
+                    <input type="number" id="inputFc" class="w-full bg-[#010e06] text-white text-xs font-bold p-2.5 border border-[#0a3a1f] focus:border-[#00ff66] focus:outline-none" value="142850000" placeholder="e.g. 142850000"/>
+                </div>
+
+                <!-- Modulation Override -->
+                <div class="space-y-1">
+                    <label class="text-[10px] text-[#849581] font-bold uppercase">Modulation Override</label>
+                    <select id="selectModulation" class="w-full bg-[#010e06] text-[#caead5] text-xs font-bold p-2.5 border border-[#0a3a1f] focus:border-[#00ff66] focus:outline-none cursor-pointer">
+                        <option value="">AUTO (AMC Detection)</option>
+                        <option value="QPSK" selected>QPSK</option>
+                        <option value="BPSK">BPSK</option>
+                        <option value="8PSK">8PSK</option>
+                        <option value="QAM16">QAM16</option>
+                        <option value="QAM64">QAM64</option>
+                        <option value="GFSK">GFSK</option>
+                        <option value="CPFSK">CPFSK</option>
+                    </select>
+                </div>
             </div>
-          </div>
-          <div class="correlation-details-grid">
-            <div class="metric-row"><span class="metric-key">Cross-Correlation Peak (R_xy):</span><span class="metric-val" id="corrPeakVal">0.985 (Threshold &gt; 0.85)</span></div>
-            <div class="metric-row"><span class="metric-key">Frame Boundary Offset:</span><span class="metric-val" id="corrOffsetVal">Offset: 0 bits (Aligned)</span></div>
-            <div class="metric-row"><span class="metric-key">Interleaver De-interleaved:</span><span class="metric-val" id="corrDeintVal">Block (Row-Column W=20)</span></div>
-            <div class="metric-row"><span class="metric-key">Multi-Interleaver Pool:</span><span class="metric-val" id="corrMultiIntVal">Block, Conv, Diag, Pseudo-Random</span></div>
-            <div class="metric-row"><span class="metric-key">FEC Verification:</span><span class="metric-val" id="corrFecVal">Hamming / Conv Viterbi / Concatenated</span></div>
-            <div class="metric-row"><span class="metric-key">Payload Recovery Status:</span><span class="metric-val" id="corrRecoveryVal" style="color:var(--accent-mint); font-weight:700;">VALIDATED &amp; CHECKSUM CONFIRMED</span></div>
-          </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-[#0a3a1f]">
+                <div class="flex items-center gap-3">
+                    <input type="file" id="fileUploadInput" accept=".json,.iq,.wav,.bin" class="hidden" />
+                    <button id="btnUploadFile" class="px-3.5 py-2 bg-[#010e06] hover:bg-[#032612] text-[#caead5] hover:text-[#00ff66] text-xs font-bold border border-[#0a3a1f] transition-colors cursor-pointer flex items-center gap-2" type="button">
+                        <span>📂</span> Upload Custom Signal (.json / .iq / .wav)
+                    </button>
+                    <button id="btnReloadPreset" class="px-3.5 py-2 bg-[#010e06] hover:bg-[#032612] text-[#849581] hover:text-white text-xs font-bold border border-[#0a3a1f] transition-colors cursor-pointer flex items-center gap-2" type="button">
+                        <span>🔄</span> Reset to Preset
+                    </button>
+                </div>
+
+                <button id="btnRunPipeline" class="px-7 py-2.5 bg-[#00ff66] hover:bg-[#6bff83] text-[#010e06] text-xs font-mono font-extrabold border border-[#00ff66] shadow-[0_0_20px_rgba(0,255,102,0.4)] transition-all uppercase tracking-wider cursor-pointer flex items-center gap-2">
+                    <span>⚡</span> RUN COMPLETE ANALYSIS
+                </button>
+            </div>
+            <div id="alertBanner" class="hidden p-2.5 text-xs font-mono bg-[#ff4d4d]/20 border border-[#ff4d4d] text-[#ff4d4d]"></div>
+        </section>
+
+        <!-- STEP 2: 4 TELEMETRY RADAR CARDS (UPDATED ONLY ON RUN) -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="telemetry">
+            <!-- Card 1: EST. CENTER FREQ -->
+            <div class="group relative bg-[#02170b] border border-[#0a3a1f] p-4 hover:border-[#00ff66]/60 transition-all font-mono cursor-help shadow-sm flex flex-col justify-between">
+                <div class="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-[#00ff66]"></div>
+                <div class="flex items-center justify-between text-[#849581] border-b border-[#0a3a1f] pb-1.5">
+                    <span class="text-[11px] font-bold tracking-widest text-[#00ff66]">EST. CENTER FREQ</span>
+                    <span id="telemetryAfcBadge" class="text-[10px] text-[#849581] font-semibold">● STANDBY</span>
+                </div>
+                <div class="my-2.5 flex items-center justify-between gap-3">
+                    <div>
+                        <div class="flex items-baseline gap-1">
+                            <span id="telemetryFcVal" class="font-mono text-2xl font-bold tracking-tight text-white">—</span>
+                            <span class="font-mono text-xs font-semibold text-[#00ff66]">MHz</span>
+                        </div>
+                        <div id="telemetryBandName" class="text-[10px] text-[#849581] mt-0.5">Awaiting Analysis</div>
+                    </div>
+                </div>
+                <div class="pt-2 border-t border-[#0a3a1f] flex items-center justify-between text-xs text-[#849581]">
+                    <span>IF OFFSET: <b id="telemetryIfOffset" class="text-white">—</b></span>
+                    <span>BW: <b id="telemetryBw" class="text-white">—</b></span>
+                </div>
+            </div>
+
+            <!-- Card 2: SAMPLING RATE (FS) -->
+            <div class="group relative bg-[#02170b] border border-[#0a3a1f] p-4 hover:border-[#00ff66]/60 transition-all font-mono cursor-help shadow-sm flex flex-col justify-between">
+                <div class="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-[#00ff66]"></div>
+                <div class="flex items-center justify-between text-[#849581] border-b border-[#0a3a1f] pb-1.5">
+                    <span class="text-[11px] font-bold tracking-widest text-[#00ff66]">SAMPLING RATE (FS)</span>
+                    <span id="telemetryFsBadge" class="text-[10px] text-[#849581] font-semibold">OVERSAMPLED 4x</span>
+                </div>
+                <div class="my-2.5 flex items-center justify-between gap-3">
+                    <div>
+                        <div class="flex items-baseline gap-1">
+                            <span id="telemetryFsVal" class="font-mono text-2xl font-bold tracking-tight text-white">—</span>
+                            <span class="font-mono text-xs font-semibold text-[#00ff66]">MSps</span>
+                        </div>
+                        <div class="text-[10px] text-[#849581] mt-0.5">Decimation: 1:1</div>
+                    </div>
+                </div>
+                <div class="pt-2 border-t border-[#0a3a1f] flex items-center justify-between text-xs text-[#849581]">
+                    <span>NYQUIST BW: <b id="telemetryNyquist" class="text-white">—</b></span>
+                    <span>FPGA FIFO: <b class="text-[#00ff66]">OK</b></span>
+                </div>
+            </div>
+
+            <!-- Card 3: DYNAMIC RANGE / SNR -->
+            <div class="group relative bg-[#02170b] border border-[#0a3a1f] p-4 hover:border-[#00ff66]/60 transition-all font-mono cursor-help shadow-sm flex flex-col justify-between">
+                <div class="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-[#00ff66]"></div>
+                <div class="flex items-center justify-between text-[#849581] border-b border-[#0a3a1f] pb-1.5">
+                    <span class="text-[11px] font-bold tracking-widest text-[#00ff66]">DYNAMIC RANGE / SNR</span>
+                    <span id="telemetrySnrBadge" class="text-[10px] text-[#849581] font-semibold">STANDBY</span>
+                </div>
+                <div class="my-2.5 flex items-center justify-between gap-3">
+                    <div>
+                        <div class="flex items-baseline gap-1">
+                            <span id="telemetrySnrVal" class="font-mono text-2xl font-bold tracking-tight text-[#00ff66]">—</span>
+                            <span class="font-mono text-xs font-semibold text-[#849581]">dB FS</span>
+                        </div>
+                        <div id="telemetrySinadVal" class="text-[10px] text-[#849581] mt-0.5">— dB SINAD</div>
+                    </div>
+                </div>
+                <div class="pt-2 border-t border-[#0a3a1f] flex items-center justify-between text-xs text-[#849581]">
+                    <span>NOISE FLOOR: <b id="telemetryNoiseFloor" class="text-white">—</b></span>
+                    <span>ENOB: <b id="telemetryEnob" class="text-white">—</b></span>
+                </div>
+            </div>
+
+            <!-- Card 4: ENERGY DETECTOR -->
+            <div class="group relative bg-[#02170b] border border-[#0a3a1f] p-4 hover:border-[#00ff66]/60 transition-all font-mono cursor-help shadow-sm flex flex-col justify-between">
+                <div class="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-[#00ff66]"></div>
+                <div class="flex items-center justify-between text-[#849581] border-b border-[#0a3a1f] pb-1.5">
+                    <span class="text-[11px] font-bold tracking-widest text-[#00ff66]">ENERGY DETECTOR</span>
+                    <span id="telemetryEnergyBadge" class="text-[10px] text-[#849581] font-semibold">● STANDBY</span>
+                </div>
+                <div class="my-2.5 flex items-center justify-between gap-3">
+                    <div>
+                        <div class="flex items-baseline gap-1">
+                            <span id="telemetryDeltaVal" class="font-mono text-2xl font-bold tracking-tight text-[#ffba27]">—</span>
+                            <span class="font-mono text-xs font-semibold text-[#ffba27]">dB Delta</span>
+                        </div>
+                        <div class="text-[10px] text-[#849581] mt-0.5">P_FA: 10^-6</div>
+                    </div>
+                </div>
+                <div class="pt-2 border-t border-[#0a3a1f] flex items-center justify-between text-xs text-[#849581]">
+                    <span>THRESH: <b id="telemetryThreshold" class="text-white">+6.0 dB</b></span>
+                    <span>BURST: <b id="telemetryBurstState" class="text-[#849581]">STANDBY</b></span>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 3: POWER SPECTRAL DENSITY (THERMAL IR HEATMAP SPECTRUM) -->
+        <section class="bg-[#02170b] border border-[#0a3a1f] rounded-none overflow-hidden shadow-lg font-mono crt-vignette" id="spectrum">
+            <div class="px-5 py-3 border-b border-[#0a3a1f] bg-[#010e06] flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2">
+                        <span class="text-[#ff7700] text-base font-bold">📊</span>
+                        <span class="text-xs font-bold text-white tracking-widest uppercase">THERMAL POWER SPECTRAL DENSITY (PSD / FFT)</span>
+                    </div>
+                    <span id="psdSpanChip" class="text-[10px] font-mono text-[#00ff66] bg-[#032612] border border-[#00ff66]/40 px-2 py-0.5 font-bold">
+                        SPAN: 20.0 MHz
+                    </span>
+                    <span class="text-[10px] font-mono text-[#849581] border border-[#0a3a1f] px-2 py-0.5">RBW: 4.88 kHz</span>
+                    <span class="text-[10px] font-mono text-[#ff7700] border border-[#ff7700]/30 px-2 py-0.5 font-bold">IR THERMAL GRADIENT</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 text-xs">
+                    <!-- 2D / 3D Mode Switch -->
+                    <div class="flex items-center border border-[#0a3a1f] p-0.5 bg-[#010e06]">
+                        <button id="btnViewMode2D" class="px-2.5 py-1 bg-[#00ff66] text-[#010e06] font-bold uppercase text-[10px] cursor-pointer transition-all" type="button">2D PSD</button>
+                        <button id="btnViewMode3D" class="px-2.5 py-1 text-[#849581] hover:text-[#00ff66] uppercase text-[10px] cursor-pointer transition-all flex items-center gap-1" type="button">
+                            <span>🎮</span> 3D SURFACE
+                        </button>
+                    </div>
+
+                    <!-- Zoom & Trace Controls -->
+                    <button id="btnResetZoom" class="px-2 py-1 text-[#ffd700] hover:bg-[#032612] bg-[#02170b] border border-[#ffd700]/40 uppercase text-[10px] cursor-pointer font-bold" title="Reset Zoom to 1.0x" type="button">RESET ZOOM (1X)</button>
+                    <button id="btnPeakTrace" class="px-2 py-1 bg-[#00ff66] text-[#010e06] font-bold uppercase text-[10px] cursor-pointer" type="button">PEAK TRACE</button>
+                    <button id="btnAvgTrace" class="px-2 py-1 text-[#849581] hover:text-[#00ff66] bg-[#02170b] border border-[#0a3a1f] uppercase text-[10px] cursor-pointer" type="button">AVG (EMA: 16)</button>
+                </div>
+            </div>
+
+            <div class="relative w-full h-80 bg-[#010e06] p-4 select-none border-b border-[#0a3a1f] overflow-hidden flex flex-col justify-between">
+                <canvas id="psdCanvas" class="absolute inset-0 w-full h-full pointer-events-auto cursor-crosshair z-10 block"></canvas>
+                <!-- 3D Orbit Helper Overlay (Visible in 3D Mode) -->
+                <div id="psd3dControlsHint" class="hidden absolute bottom-9 right-4 z-20 font-mono text-[10px] bg-[#010e06]/90 border border-[#00ff66]/50 px-2.5 py-1 text-[#00ff66] flex items-center gap-3 shadow-lg pointer-events-auto">
+                    <span>↻ <b>L-DRAG:</b> ROTATE</span>
+                    <span class="text-[#0a3a1f]">|</span>
+                    <span>⤡ <b>WHEEL:</b> ZOOM</span>
+                    <span class="text-[#0a3a1f]">|</span>
+                    <span>✥ <b>R-DRAG:</b> PAN</span>
+                    <button id="btnReset3dView" class="ml-1 px-1.5 py-0.5 bg-[#00ff66] text-[#010e06] font-bold cursor-pointer text-[9px]">RESET 3D</button>
+                </div>
+                <!-- Dynamic Hover Tooltip HUD (Snaps to Nearest FFT Bin) -->
+                <div id="psdBinTooltip" class="hidden absolute z-30 font-mono text-[10px] bg-[#010e06] border border-[#ffba27] text-white px-2.5 py-1 pointer-events-none shadow-[0_0_12px_rgba(255,186,39,0.3)]"></div>
+
+                <div id="psdHudMarker" class="absolute left-1/2 top-3 -translate-x-1/2 z-20 pointer-events-none">
+                    <div class="bg-[#010e06] border border-[#ff7700] px-3 py-1 shadow-[0_0_15px_rgba(255,119,0,0.5)] flex items-center gap-2.5 text-[10px] font-mono text-[#00ff66]">
+                        <span class="w-2 h-2 rounded-full bg-[#ff2222] animate-pulse shadow-[0_0_8px_#ff2222]"></span>
+                        <span>Marker 1: PEAK <b id="markerPeakVal" class="text-[#ff2222] font-bold">— dBFS</b> @ <b id="markerFreqVal" class="text-white">— MHz</b> | OBW: <b id="markerObwVal" class="text-[#ffd700]">— MHz</b> | Spur Suppr: <b id="markerSpurVal" class="text-[#00ff66]">— dB</b></span>
+                    </div>
+                </div>
+
+                <!-- Y-Axis dB Scale: 0 dB IS AT THE BOTTOM (User Requirement) -->
+                <div class="h-[250px] flex flex-col justify-between font-mono text-[9px] text-[#849581] z-20 pl-2 select-none pointer-events-none pt-2">
+                    <span class="text-[#ff2222] font-bold">+100 dBFS</span>
+                    <span class="text-[#ff8800] font-bold">+80 dB</span>
+                    <span class="text-[#ffd700] font-bold">+60 dB</span>
+                    <span class="text-[#6bff83] font-bold">+40 dB</span>
+                    <span class="text-[#00ff66] font-bold">+20 dB</span>
+                    <span class="text-[#00ff66] font-bold text-[10px] glow-phosphor-sm">0 dB (BASELINE)</span>
+                </div>
+
+                <div class="w-full flex justify-between font-mono text-[10px] text-[#849581] z-20 pt-1 px-8 select-none pointer-events-none pb-1 bg-[#010e06]/70">
+                    <span id="freqTick1">132.850 MHz</span>
+                    <span id="freqTick2">136.183 MHz</span>
+                    <span id="freqTick3">139.516 MHz</span>
+                    <span id="freqTickCenter" class="text-[#00ff66] font-bold">Fc: 142.850 MHz (CENTER)</span>
+                    <span id="freqTick5">146.183 MHz</span>
+                    <span id="freqTick6">149.516 MHz</span>
+                    <span id="freqTick7">152.850 MHz</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 4: COMPANION VISUALIZERS (WAVEFORM & CONSTELLATIONS) -->
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-5 font-mono" id="oscilloscope">
+            <!-- Plot 1: Time Domain Waveform -->
+            <div class="group relative bg-[#02170b] border border-[#0a3a1f] p-4 flex flex-col justify-between crt-vignette">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-white tracking-widest uppercase">📈 TIME-DOMAIN WAVEFORM</span>
+                    <span id="waveformSampleBadge" class="text-[10px] text-[#00ff66] font-bold bg-[#032612] px-1.5 py-0.2">1200 Samples</span>
+                </div>
+                <div class="relative w-full h-44 bg-[#010e06] border border-[#0a3a1f] overflow-hidden flex items-center justify-center p-0">
+                    <canvas id="waveformCanvas" class="w-full h-full z-10 block cursor-crosshair"></canvas>
+                </div>
+                <div class="mt-2.5 flex items-center justify-between text-[10px] text-[#849581]">
+                    <div>CHANNELS: <span class="text-[#00ff66] font-bold">I(t) [White] &amp; Q(t) [Green]</span></div>
+                    <div>NORM: <span class="text-white font-bold">Unit Variance</span></div>
+                </div>
+            </div>
+
+            <!-- Plot 2: Raw Constellation (I vs Q) -->
+            <div class="group relative bg-[#02170b] border border-[#0a3a1f] p-4 flex flex-col justify-between crt-vignette">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-white tracking-widest uppercase">🎯 RAW CONSTELLATION (I vs Q)</span>
+                    <span class="text-[10px] text-[#ffba27] font-bold bg-[#010e06] border border-[#0a3a1f] px-1.5 py-0.2">Raw Samples</span>
+                </div>
+                <div class="relative w-full h-44 bg-[#010e06] border border-[#0a3a1f] overflow-hidden flex items-center justify-center p-0">
+                    <canvas id="rawConstellationCanvas" class="w-full h-full z-10 block cursor-crosshair"></canvas>
+                </div>
+                <div class="mt-2.5 flex items-center justify-between text-[10px] text-[#849581]">
+                    <div>POINTS: <span id="rawConstellationCount" class="text-white font-bold">—</span></div>
+                    <div>STATE: <span id="rawCarrierState" class="text-[#ffba27] font-bold">Unsynchronized</span></div>
+                </div>
+            </div>
+
+            <!-- Plot 3: Synchronized Symbol Constellation -->
+            <div class="group relative bg-[#02170b] border border-[#0a3a1f] p-4 flex flex-col justify-between crt-vignette">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-white tracking-widest uppercase">✨ SYNCHRONIZED SYMBOL CONSTELLATION</span>
+                    <span id="recoveredSymbolBadge" class="text-[10px] text-[#849581] font-bold bg-[#010e06] border border-[#0a3a1f] px-1.5 py-0.2">Awaiting Run</span>
+                </div>
+                <div class="relative w-full h-44 bg-[#010e06] border border-[#0a3a1f] overflow-hidden flex items-center justify-center p-0">
+                    <canvas id="recoveredConstellationCanvas" class="w-full h-full z-10 block cursor-crosshair"></canvas>
+                </div>
+                <div class="mt-2.5 flex items-center justify-between text-[10px] text-[#849581]">
+                    <div>RECOVERED: <span id="recoveredSymbolCount" class="text-white font-bold">0 Syms</span></div>
+                    <div>LOCK: <span id="costasLockStatus" class="text-[#849581] font-bold">Awaiting Execution</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 5: SEQUENTIAL 10-STAGE SIGNAL PROCESSING CHECKLIST -->
+        <section class="bg-[#02170b] border border-[#0a3a1f] text-[#caead5] p-4 font-mono text-xs crt-vignette space-y-3" id="checklist">
+            <div class="flex items-center justify-between border-b border-[#0a3a1f] pb-2">
+                <div class="flex items-center gap-2">
+                    <span class="text-[#00ff66] font-bold text-sm">2</span>
+                    <span class="text-sm font-bold text-white tracking-widest uppercase">SEQUENTIAL SIGNAL PROCESSING STAGES</span>
+                </div>
+                <div id="overallStatusBadge" class="text-[10px] text-[#849581] bg-[#010e06] border border-[#0a3a1f] px-2.5 py-0.5 font-bold">
+                    STANDBY
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-10 gap-2">
+                <!-- 01: Canonical IQ -->
+                <div class="bg-[#010e06] border border-[#0a3a1f] p-2 flex flex-col justify-between text-center min-h-[76px] hover:border-[#00ff66]/50 transition-colors">
+                    <div class="flex items-center justify-between text-[9px] text-[#849581]">
+                        <span class="font-bold">01</span>
+                        <svg class="w-3.5 h-3.5 text-[#00ff66]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 21h18M3 21V3"/>
+                            <circle cx="15" cy="9" r="2" fill="#00ff66"/>
+                            <line x1="3" y1="21" x2="15" y2="9" stroke="#6bff83" stroke-dasharray="2 2"/>
+                        </svg>
+                    </div>
+                    <span class="text-[10px] text-white font-bold my-0.5 leading-tight">Canonical IQ</span>
+                    <span id="badgeM1" class="text-[9px] font-bold px-1 py-0.2 badge-standby">STANDBY</span>
+                </div>
+
+                <!-- 02: Observations -->
+                <div class="bg-[#010e06] border border-[#0a3a1f] p-2 flex flex-col justify-between text-center min-h-[76px] hover:border-[#00ff66]/50 transition-colors">
+                    <div class="flex items-center justify-between text-[9px] text-[#849581]">
+                        <span class="font-bold">02</span>
+                        <svg class="w-3.5 h-3.5 text-[#00ff66]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z"/>
+                            <circle cx="12" cy="12" r="3" fill="#00ff66" fill-opacity="0.3"/>
+                            <circle cx="12" cy="12" r="1.2" fill="#00ff66"/>
+                        </svg>
+                    </div>
+                    <span class="text-[10px] text-white font-bold my-0.5 leading-tight">Observations</span>
+                    <span id="badgeM2" class="text-[9px] font-bold px-1 py-0.2 badge-standby">STANDBY</span>
+                </div>
+
+                <!-- 03: Modulation AMC -->
+                <div class="bg-[#010e06] border border-[#0a3a1f] p-2 flex flex-col justify-between text-center min-h-[76px] hover:border-[#00ff66]/50 transition-colors">
+                    <div class="flex items-center justify-between text-[9px] text-[#849581]">
+                        <span class="font-bold">03</span>
+                        <svg class="w-3.5 h-3.5 text-[#00ff66]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <path d="M12 2v20M2 12h20" stroke-opacity="0.5"/>
+                            <circle cx="6" cy="6" r="1.8" fill="#00ff66"/>
+                            <circle cx="18" cy="6" r="1.8" fill="#00ff66"/>
+                            <circle cx="6" cy="18" r="1.8" fill="#00ff66"/>
+                            <circle cx="18" cy="18" r="1.8" fill="#00ff66"/>
+                        </svg>
+                    </div>
+                    <span class="text-[10px] text-white font-bold my-0.5 leading-tight">Modulation AMC</span>
+                    <span id="badgeM3" class="text-[9px] font-bold px-1 py-0.2 badge-standby">STANDBY</span>
+                </div>
+
+                <!-- 04: Parameters -->
+                <div class="bg-[#010e06] border border-[#0a3a1f] p-2 flex flex-col justify-between text-center min-h-[76px] hover:border-[#00ff66]/50 transition-colors">
+                    <div class="flex items-center justify-between text-[9px] text-[#849581]">
+                        <span class="font-bold">04</span>
+                        <svg class="w-3.5 h-3.5 text-[#00ff66]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="3" y1="6" x2="21" y2="6"/>
+                            <line x1="3" y1="12" x2="21" y2="12"/>
+                            <line x1="3" y1="18" x2="21" y2="18"/>
+                            <circle cx="8" cy="6" r="2" fill="#00ff66"/>
+                            <circle cx="16" cy="12" r="2" fill="#00ff66"/>
+                            <circle cx="11" cy="18" r="2" fill="#00ff66"/>
+                        </svg>
+                    </div>
+                    <span class="text-[10px] text-white font-bold my-0.5 leading-tight">Parameters</span>
+                    <span id="badgeM4" class="text-[9px] font-bold px-1 py-0.2 badge-standby">STANDBY</span>
+                </div>
+
+                <!-- 05: Carrier Sync -->
+                <div class="bg-[#010e06] border border-[#0a3a1f] p-2 flex flex-col justify-between text-center min-h-[76px] hover:border-[#00ff66]/50 transition-colors">
+                    <div class="flex items-center justify-between text-[9px] text-[#849581]">
+                        <span class="font-bold">05</span>
+                        <svg class="w-3.5 h-3.5 text-[#00ff66]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M2 12c3-5 6-5 9 0s6 5 9 0"/>
+                            <circle cx="12" cy="12" r="2.5" fill="#00ff66"/>
+                            <path d="M12 2v3M12 19v3" stroke-opacity="0.6"/>
+                        </svg>
+                    </div>
+                    <span class="text-[10px] text-white font-bold my-0.5 leading-tight">Carrier Sync</span>
+                    <span id="badgeM5" class="text-[9px] font-bold px-1 py-0.2 badge-standby">STANDBY</span>
+                </div>
+
+                <!-- 06: SNR Quality -->
+                <div class="bg-[#010e06] border border-[#0a3a1f] p-2 flex flex-col justify-between text-center min-h-[76px] hover:border-[#00ff66]/50 transition-colors">
+                    <div class="flex items-center justify-between text-[9px] text-[#849581]">
+                        <span class="font-bold">06</span>
+                        <svg class="w-3.5 h-3.5 text-[#00ff66]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="4" y1="20" x2="4" y2="16"/>
+                            <line x1="8" y1="20" x2="8" y2="12"/>
+                            <line x1="12" y1="20" x2="12" y2="8"/>
+                            <line x1="16" y1="20" x2="16" y2="5"/>
+                            <line x1="20" y1="20" x2="20" y2="2"/>
+                        </svg>
+                    </div>
+                    <span class="text-[10px] text-white font-bold my-0.5 leading-tight">SNR Quality</span>
+                    <span id="badgeM6" class="text-[9px] font-bold px-1 py-0.2 badge-standby">STANDBY</span>
+                </div>
+
+                <!-- 07: Soft Bits -->
+                <div class="bg-[#010e06] border border-[#0a3a1f] p-2 flex flex-col justify-between text-center min-h-[76px] hover:border-[#00ff66]/50 transition-colors">
+                    <div class="flex items-center justify-between text-[9px] text-[#849581]">
+                        <span class="font-bold">07</span>
+                        <svg class="w-3.5 h-3.5 text-[#00ff66]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <rect x="3" y="5" width="7" height="14" rx="1"/>
+                            <rect x="14" y="5" width="7" height="14" rx="1"/>
+                            <line x1="6.5" y1="9" x2="6.5" y2="15" stroke-width="2"/>
+                            <line x1="17.5" y1="12" x2="17.5" y2="15" stroke-width="2"/>
+                        </svg>
+                    </div>
+                    <span class="text-[10px] text-white font-bold my-0.5 leading-tight">Soft Bits</span>
+                    <span id="badgeM7" class="text-[9px] font-bold px-1 py-0.2 badge-standby">STANDBY</span>
+                </div>
+
+                <!-- 08: Blind FEC -->
+                <div class="bg-[#010e06] border border-[#0a3a1f] p-2 flex flex-col justify-between text-center min-h-[76px] hover:border-[#00ff66]/50 transition-colors">
+                    <div class="flex items-center justify-between text-[9px] text-[#849581]">
+                        <span class="font-bold">08</span>
+                        <svg class="w-3.5 h-3.5 text-[#00ff66]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <circle cx="5" cy="6" r="2" fill="#00ff66"/>
+                            <circle cx="19" cy="6" r="2" fill="#00ff66"/>
+                            <circle cx="5" cy="18" r="2" fill="#00ff66"/>
+                            <circle cx="19" cy="18" r="2" fill="#00ff66"/>
+                            <line x1="7" y1="6" x2="17" y2="18"/>
+                            <line x1="7" y1="18" x2="17" y2="6"/>
+                        </svg>
+                    </div>
+                    <span class="text-[10px] text-white font-bold my-0.5 leading-tight">Blind FEC</span>
+                    <span id="badgeM8" class="text-[9px] font-bold px-1 py-0.2 badge-standby">STANDBY</span>
+                </div>
+
+                <!-- 09: Frame Struct -->
+                <div class="bg-[#010e06] border border-[#0a3a1f] p-2 flex flex-col justify-between text-center min-h-[76px] hover:border-[#00ff66]/50 transition-colors">
+                    <div class="flex items-center justify-between text-[9px] text-[#849581]">
+                        <span class="font-bold">09</span>
+                        <svg class="w-3.5 h-3.5 text-[#00ff66]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <rect x="2" y="6" width="20" height="12" rx="1"/>
+                            <line x1="7" y1="6" x2="7" y2="18"/>
+                            <line x1="14" y1="6" x2="14" y2="18"/>
+                            <path d="M4 12h1M9.5 12h2.5M16.5 12h3.5"/>
+                        </svg>
+                    </div>
+                    <span class="text-[10px] text-white font-bold my-0.5 leading-tight">Frame Struct</span>
+                    <span id="badgeM9" class="text-[9px] font-bold px-1 py-0.2 badge-standby">STANDBY</span>
+                </div>
+
+                <!-- 10: CRC & Interleave -->
+                <div class="bg-[#010e06] border border-[#0a3a1f] p-2 flex flex-col justify-between text-center min-h-[76px] hover:border-[#00ff66]/50 transition-colors">
+                    <div class="flex items-center justify-between text-[9px] text-[#849581]">
+                        <span class="font-bold">10</span>
+                        <svg class="w-3.5 h-3.5 text-[#00ff66]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            <path d="M9 12l2 2 4-4" stroke="#6bff83"/>
+                        </svg>
+                    </div>
+                    <span class="text-[10px] text-white font-bold my-0.5 leading-tight">CRC &amp; Interleave</span>
+                    <span id="badgeM10" class="text-[9px] font-bold px-1 py-0.2 badge-standby">STANDBY</span>
+                </div>
+            </div>
+        </section>
+
+        
+        <!-- ========================================================================= -->
+        <!-- STEP 6: DIGITAL RECOVERY (AUTHORITATIVE SYSTEM ARCHITECTURE - SIH 2026)    -->
+        <!-- Flow from Technical Approach: SNR/Quality -> Soft-Bits -> FEC -> Framing  -->
+        <!-- ========================================================================= -->
+        <section class="bg-[#02170b] border border-[#0a3a1f] p-5 font-mono crt-vignette space-y-4 shadow-[0_0_30px_rgba(0,255,102,0.06)]" id="digital-recovery">
+            <!-- Section Header -->
+            <div class="flex flex-wrap items-center justify-between border-b border-[#0a3a1f] pb-3 gap-3">
+                <div class="flex items-center gap-3">
+                    <span class="text-[#00ff66] font-extrabold text-base">⚛</span>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-sm font-bold text-white tracking-widest uppercase">DIGITAL RECOVERY PIPELINE</h2>
+                            <span class="text-[9px] bg-[#032612] border border-[#00ff66]/50 px-2 py-0.5 text-[#00ff66] font-bold">SIH26147 ARCHITECTURE</span>
+                        </div>
+                        <p class="text-[10px] text-[#849581] mt-0.5">
+                            Post-Demodulation Protocol Decomposition: SNR Quality &amp; EVM, Soft-Bit LLRs, Blind FEC Identification, Frame Structure, and CRC/Interleaver Permutations.
+                        </p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 text-[10px]">
+                    <span id="drPipelineBadge" class="px-2.5 py-1 bg-[#010e06] border border-[#00ff66]/40 text-[#00ff66] font-bold">
+                        ● DIGITAL RECOVERY: STANDBY
+                    </span>
+                </div>
+            </div>
+
+            <!-- 5 INTERACTIVE VISUAL INSPECTION BLOCKS (Matching Technical Approach Diagram) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                
+                <!-- 1. SNR & Quality Estimation -->
+                <div class="bg-[#010e06] border border-[#0a3a1f] p-3.5 flex flex-col justify-between hover:border-[#00ff66]/40 transition-colors">
+                    <div class="flex items-center justify-between border-b border-[#0a3a1f] pb-1.5 mb-2">
+                        <span class="text-[11px] font-bold text-white flex items-center gap-1.5">
+                            <span class="text-[#00ff66]">1.</span> SNR &amp; QUALITY ESTIMATION
+                        </span>
+                        <span id="drSnrQualityBadge" class="text-[9px] text-[#849581] font-semibold">Gaussian Bell</span>
+                    </div>
+                    <!-- Gaussian Probability Curve & EVM Scatter Canvas -->
+                    <div class="relative w-full h-32 bg-[#02170b] border border-[#0a3a1f] overflow-hidden my-1">
+                        <canvas id="drSnrCurveCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-[10px] pt-1 text-[#849581]">
+                        <div>SNR EST: <b id="drSnrEstVal" class="text-[#00ff66]">— dB</b></div>
+                        <div>EVM RMS: <b id="drEvmVal" class="text-white">— %</b></div>
+                        <div>MER: <b id="drMerVal" class="text-[#6bff83]">— dB</b></div>
+                        <div>DEFLECTION: <b id="drDeflectionVal" class="text-white">—</b></div>
+                    </div>
+                </div>
+
+                <!-- 2. Soft-Bit Generation (LLR Stem Plot) -->
+                <div class="bg-[#010e06] border border-[#0a3a1f] p-3.5 flex flex-col justify-between hover:border-[#00ff66]/40 transition-colors">
+                    <div class="flex items-center justify-between border-b border-[#0a3a1f] pb-1.5 mb-2">
+                        <span class="text-[11px] font-bold text-white flex items-center gap-1.5">
+                            <span class="text-[#00ff66]">2.</span> SOFT-BIT LLR VALUES
+                        </span>
+                        <span id="drLlrCountBadge" class="text-[9px] text-[#ffd700] font-semibold">Exact Gaussian</span>
+                    </div>
+                    <!-- LLR Stem Bar Plot Canvas -->
+                    <div class="relative w-full h-32 bg-[#02170b] border border-[#0a3a1f] overflow-hidden my-1">
+                        <canvas id="drLlrStemCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-[10px] pt-1 text-[#849581]">
+                        <div>NOISE (N₀): <b id="drNoiseN0Val" class="text-[#ffd700]">2.000e-2</b></div>
+                        <div>AGREEMENT: <b id="drAgreementVal" class="text-[#00ff66]">100.0%</b></div>
+                        <div>METRIC: <b class="text-white">Log-Likelihood</b></div>
+                        <div>LLR SIGN: <b class="text-[#00ff66]">Bit 0 (+), Bit 1 (-)</b></div>
+                    </div>
+                </div>
+
+                <!-- 3. FEC / Code Identification -->
+                <div class="bg-[#010e06] border border-[#0a3a1f] p-3.5 flex flex-col justify-between hover:border-[#00ff66]/40 transition-colors">
+                    <div class="flex items-center justify-between border-b border-[#0a3a1f] pb-1.5 mb-2">
+                        <span class="text-[11px] font-bold text-white flex items-center gap-1.5">
+                            <span class="text-[#00ff66]">3.</span> FEC / CODE IDENTIFICATION
+                        </span>
+                        <span id="drFecFamilyBadge" class="text-[9px] text-[#00ff66] font-bold bg-[#032612] px-1.5 py-0.2 border border-[#00ff66]/40">Awaiting Run</span>
+                    </div>
+                    <!-- Syndrome Analysis Bit Register UI -->
+                    <div class="space-y-1.5 my-1">
+                        <div class="text-[9px] text-[#849581]">SYNDROME ANALYSIS REGISTER [S₀ - S₆]:</div>
+                        <div id="drSyndromeRegister" class="grid grid-cols-7 gap-1 text-center font-bold text-xs py-1">
+                            <span class="p-1 bg-[#02170b] border border-[#0a3a1f] text-[#849581]">0</span>
+                            <span class="p-1 bg-[#02170b] border border-[#0a3a1f] text-[#849581]">0</span>
+                            <span class="p-1 bg-[#02170b] border border-[#0a3a1f] text-[#00ff66]">1</span>
+                            <span class="p-1 bg-[#02170b] border border-[#0a3a1f] text-[#849581]">0</span>
+                            <span class="p-1 bg-[#02170b] border border-[#0a3a1f] text-[#849581]">0</span>
+                            <span class="p-1 bg-[#02170b] border border-[#0a3a1f] text-[#00ff66]">1</span>
+                            <span class="p-1 bg-[#02170b] border border-[#0a3a1f] text-[#849581]">0</span>
+                        </div>
+                    </div>
+                    <!-- Supported FEC Families List -->
+                    <div class="grid grid-cols-2 gap-1.5 text-[9px] pt-1">
+                        <div class="p-1 border border-[#0a3a1f] bg-[#02170b] flex justify-between"><span class="text-[#849581]">Hamming:</span><b id="fecHammingVal" class="text-[#00ff66]">Active Candidate</b></div>
+                        <div class="p-1 border border-[#0a3a1f] bg-[#02170b] flex justify-between"><span class="text-[#849581]">BCH:</span><b id="fecBchVal" class="text-[#849581]">Evaluated</b></div>
+                        <div class="p-1 border border-[#0a3a1f] bg-[#02170b] flex justify-between"><span class="text-[#849581]">Reed Solomon:</span><b id="fecRsVal" class="text-[#849581]">Evaluated</b></div>
+                        <div class="p-1 border border-[#0a3a1f] bg-[#02170b] flex justify-between"><span class="text-[#849581]">LDPC:</span><b id="fecLdpcVal" class="text-[#849581]">Evaluated</b></div>
+                    </div>
+                </div>
+
+                <!-- 4. Frame & Bitstream Analysis -->
+                <div class="bg-[#010e06] border border-[#0a3a1f] p-3.5 flex flex-col justify-between hover:border-[#00ff66]/40 transition-colors">
+                    <div class="flex items-center justify-between border-b border-[#0a3a1f] pb-1.5 mb-2">
+                        <span class="text-[11px] font-bold text-white flex items-center gap-1.5">
+                            <span class="text-[#00ff66]">4.</span> FRAME &amp; BITSTREAM ANALYSIS
+                        </span>
+                        <span id="drFramePeriodBadge" class="text-[9px] text-[#849581]">Periodic Pulse</span>
+                    </div>
+                    <!-- Frame Structure Train Pulse Canvas -->
+                    <div class="relative w-full h-32 bg-[#02170b] border border-[#0a3a1f] overflow-hidden my-1">
+                        <canvas id="drFrameTrainCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-[10px] pt-1 text-[#849581]">
+                        <div>DETECTED PERIOD: <b id="drFramePeriodVal" class="text-white">— bits</b></div>
+                        <div>SYNC PHASE: <b id="drFramePhaseVal" class="text-[#6bff83]">—</b></div>
+                        <div>GF(2) RELATIONS: <b id="drGf2Val" class="text-white">—</b></div>
+                        <div>PREAMBLE: <b id="drPreambleVal" class="text-[#00ff66]">0xAA / Barker</b></div>
+                    </div>
+                </div>
+
+                <!-- 5. CRC & Interleaver Analysis -->
+                <div class="bg-[#010e06] border border-[#0a3a1f] p-3.5 flex flex-col justify-between hover:border-[#00ff66]/40 transition-colors xl:col-span-2">
+                    <div class="flex items-center justify-between border-b border-[#0a3a1f] pb-1.5 mb-2">
+                        <span class="text-[11px] font-bold text-white flex items-center gap-1.5">
+                            <span class="text-[#00ff66]">5.</span> CRC &amp; INTERLEAVER MATRIX REORGANIZATION
+                        </span>
+                        <span id="drCrcInterleaverBadge" class="text-[9px] text-[#00ff66] font-bold">Interleaved ➔ Deinterleaved</span>
+                    </div>
+                    <!-- Dual Matrix Grid Canvas: Interleaved vs Deinterleaved -->
+                    <div class="relative w-full h-32 bg-[#02170b] border border-[#0a3a1f] overflow-hidden my-1 flex items-center justify-center">
+                        <canvas id="drInterleaverMatrixCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10px] pt-1 text-[#849581]">
+                        <div>EST. MATRIX WIDTH: <b id="drInterleaverWidthVal" class="text-[#ffd700]">—</b></div>
+                        <div>CRC POLYNOMIAL: <b id="drCrcPolyVal" class="text-[#00ff66]">—</b></div>
+                        <div>ACCEPTANCE RATE: <b id="drCrcRateVal" class="text-white">— %</b></div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- STEP 7: DETAILED ENGINEERING RESULTS DASHBOARD -->
+        <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 font-mono text-xs" id="dashboard">
+            <!-- Card A: Executive Summary -->
+            <div class="bg-[#02170b] border border-[#0a3a1f] p-4 space-y-2 crt-vignette">
+                <div class="flex items-center justify-between border-b border-[#0a3a1f] pb-2 text-[#00ff66] font-bold">
+                    <span>EXECUTIVE CLASSIFICATION SUMMARY</span>
+                    <span id="resExecMod" class="text-[10px] bg-[#032612] border border-[#00ff66]/40 px-2 py-0.5 text-white">UNKNOWN</span>
+                </div>
+                <div class="flex justify-between py-0.5"><span class="text-[#849581]">Pipeline Status:</span><span id="resStatusVal" class="text-white font-bold">Awaiting Run</span></div>
+                <div class="flex justify-between py-0.5"><span class="text-[#849581]">Estimated SNR:</span><span id="resSnrVal" class="text-[#00ff66] font-bold">—</span></div>
+                <div class="flex justify-between py-0.5"><span class="text-[#849581]">Baud Rate (Rs):</span><span id="resBaudVal" class="text-white font-bold">—</span></div>
+                <div class="flex justify-between py-0.5"><span class="text-[#849581]">Top FEC Code:</span><span id="resFecVal" class="text-[#6bff83] font-bold">—</span></div>
+                <div class="flex justify-between py-0.5"><span class="text-[#849581]">Detected CRC:</span><span id="resCrcVal" class="text-white font-bold">—</span></div>
+                <div class="flex justify-between py-0.5"><span class="text-[#849581]">Interleaver Width:</span><span id="resInterleaverVal" class="text-white font-bold">—</span></div>
+            </div>
+
+            <!-- Card C: Modulation AMC -->
+            <div class="bg-[#02170b] border border-[#0a3a1f] p-4 space-y-2 crt-vignette">
+                <div class="flex items-center justify-between border-b border-[#0a3a1f] pb-2 text-[#00ff66] font-bold">
+                    <span>AUTOMATIC MODULATION RECOGNITION (AMC)</span>
+                    <span class="text-[10px] bg-[#032612] border border-[#00ff66]/40 px-2 py-0.5 text-[#00ff66]">69.00% Benchmark</span>
+                </div>
+                <div class="flex justify-between py-0.5"><span class="text-[#849581]">RF Engine A (24 Features):</span><span id="amcRfVal" class="text-white font-bold">—</span></div>
+                <div class="flex justify-between py-0.5"><span class="text-[#849581]">CNN Engine B (Raw IQ):</span><span id="amcCnnVal" class="text-white font-bold">—</span></div>
+                <div class="flex justify-between py-0.5"><span class="text-[#849581]">Model Weights Status:</span><span id="amcWeightsVal" class="text-[#00ff66] font-bold">HONEST REPORT</span></div>
+                <div class="flex justify-between py-0.5"><span class="text-[#849581]">Fusion Status:</span><span class="text-[#ffba27] font-bold">NOT_YET_VALIDATED</span></div>
+                <div class="flex justify-between py-0.5"><span class="text-[#849581]">Calibrated Confidence:</span><span class="text-white">NOT_YET_DEFINED</span></div>
+            </div>
+
+            <!-- Card D: Parameter Estimation -->
+            <div class="bg-[#02170b] border border-[#0a3a1f] p-4 space-y-2 crt-vignette">
+                <div class="flex items-center justify-between border-b border-[#0a3a1f] pb-2 text-[#00ff66] font-bold">
+                    <span>CARRIER &amp; SYMBOL PARAMETERS</span>
+                    <span class="text-[10px] bg-[#032612] border border-[#00ff66]/40 px-2 py-0.5 text-[#6bff83]">Cyclic Ciblat</span>
+                </div>
+                <div class="flex justify-between py-0.5"><span class="text-[#849581]">Symbol Rate:</span><span id="paramRsVal" class="text-white font-bold">—</span></div>
+                <div class="flex justify-between py-0.5"><span class="text-[#849581]">Samples / Symbol (SPS):</span><span id="paramSpsVal" class="text-white font-bold">—</span></div>
+                <div class="flex justify-between py-0.5"><span class="text-[#849581]">Carrier Offset (CFO):</span><span id="paramCfoVal" class="text-[#00ff66] font-bold">—</span></div>
+                <div class="flex justify-between py-0.5"><span class="text-[#849581]">Occupied Bandwidth:</span><span id="paramBwVal" class="text-white font-bold">—</span></div>
+                <div class="flex justify-between py-0.5"><span class="text-[#849581]">FSK Frequency Separation:</span><span id="paramFskVal" class="text-[#849581]">N/A (PSK/QAM)</span></div>
+            </div>
+
+            <!-- Card E: Synchronized Bitstream -->
+            <div class="bg-[#02170b] border border-[#0a3a1f] p-4 space-y-2 crt-vignette">
+                <div class="flex items-center justify-between border-b border-[#0a3a1f] pb-2 text-[#00ff66] font-bold">
+                    <span>SYNCHRONIZED BITSTREAM DEMAPPING</span>
+                    <span id="badgeBitCount" class="text-[10px] bg-[#032612] border border-[#00ff66]/40 px-2 py-0.5 text-[#00ff66]">0 Bits</span>
+                </div>
+                <div class="flex justify-between py-0.5"><span class="text-[#849581]">CFO Compensated:</span><span id="recCfoVal" class="text-white font-bold">—</span></div>
+                <div class="flex justify-between py-0.5"><span class="text-[#849581]">Costas Phase Estimate:</span><span id="recPhaseVal" class="text-white font-bold">—</span></div>
+                <div class="flex justify-between py-0.5"><span class="text-[#849581]">Gardner Timing Offset:</span><span id="recTimingVal" class="text-white font-bold">—</span></div>
+                <div id="demodBitStreamBox" class="p-2 bg-[#010e06] border border-[#0a3a1f] text-[10px] text-[#00ff66] font-mono break-all max-h-20 overflow-y-auto mt-2">
+                    // No demodulated bits available (Awaiting execution)
+                </div>
+            </div>
+
+            <!-- Card G: Soft Bits & LLR -->
+            <div class="bg-[#02170b] border border-[#0a3a1f] p-4 space-y-2 crt-vignette">
+                <div class="flex items-center justify-between border-b border-[#0a3a1f] pb-2 text-[#00ff66] font-bold">
+                    <span>SOFT-DECISION DEMAPPING &amp; LLR</span>
+                    <span class="text-[10px] bg-[#032612] border border-[#00ff66]/40 px-2 py-0.5 text-[#6bff83]">Exact LLR</span>
+                </div>
+                <div class="flex justify-between py-0.5"><span class="text-[#849581]">Metric Type:</span><span id="softMetricTypeVal" class="text-white font-bold">LLR (Exact Gaussian)</span></div>
+                <div class="flex justify-between py-0.5"><span class="text-[#849581]">Hard Decision Agreement:</span><span id="softAgreementVal" class="text-[#00ff66] font-bold">—</span></div>
+                <div class="flex justify-between py-0.5"><span class="text-[#849581]">Noise Parameter N0:</span><span id="softN0Val" class="text-white font-bold">—</span></div>
+                <div id="softStreamBox" class="p-2 bg-[#010e06] border border-[#0a3a1f] text-[10px] text-[#6bff83] font-mono break-all max-h-20 overflow-y-auto mt-2">
+                    // Soft values awaiting execution
+                </div>
+            </div>
+
+            <!-- Card I/J: Framing & CRC -->
+            <div class="bg-[#02170b] border border-[#0a3a1f] p-4 space-y-2 crt-vignette">
+                <div class="flex items-center justify-between border-b border-[#0a3a1f] pb-2 text-[#00ff66] font-bold">
+                    <span>FRAME STRUCTURE &amp; CRC INTEGRITY</span>
+                    <span class="text-[10px] bg-[#032612] border border-[#00ff66]/40 px-2 py-0.5 text-[#00ff66]">GF(2) Algebra</span>
+                </div>
+                <div class="flex justify-between py-0.5"><span class="text-[#849581]">Frame Period P:</span><span id="framingPeriodVal" class="text-white font-bold">—</span></div>
+                <div class="flex justify-between py-0.5"><span class="text-[#849581]">Frame Phase φ*:</span><span id="framingPhaseVal" class="text-white font-bold">—</span></div>
+                <div class="flex justify-between py-0.5"><span class="text-[#849581]">GF(2) Parity Relations:</span><span id="gf2RelationsVal" class="text-white font-bold">—</span></div>
+                <div class="flex justify-between py-0.5"><span class="text-[#849581]">CRC Candidate:</span><span id="crcPolyVal" class="text-[#6bff83] font-bold">—</span></div>
+                <div class="flex justify-between py-0.5"><span class="text-[#849581]">CRC Acceptance Rate:</span><span id="crcRateVal" class="text-[#00ff66] font-bold">—</span></div>
+            </div>
+        </section>
+
+        <!-- STEP 7: AUTHORITATIVE REPORT GENERATION BAR -->
+        <section class="bg-[#02170b] border border-[#0a3a1f] text-[#caead5] p-5 font-mono text-xs crt-vignette flex flex-wrap items-center justify-between gap-4">
+            <div class="space-y-1">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <span>📋</span> Authoritative Engineering Audit Report
+                </h3>
+                <p class="text-[11px] text-[#849581]">
+                    Generated directly by the backend report generator with full parameter traceability and cross-validation checksums.
+                </p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <button id="btnViewHtmlReport" class="px-4 py-2 bg-[#00ff66] hover:bg-[#6bff83] text-[#010e06] text-xs font-bold border border-[#00ff66] shadow-[0_0_12px_rgba(0,255,102,0.3)] transition-colors uppercase cursor-pointer flex items-center gap-1.5">
+                    <span>👁️</span> View HTML Report
+                </button>
+                <button id="btnDownloadHtml" class="px-3.5 py-2 bg-[#010e06] hover:bg-[#032612] text-[#caead5] hover:text-[#00ff66] text-xs font-bold border border-[#0a3a1f] transition-colors cursor-pointer">
+                    Download HTML
+                </button>
+                <button id="btnDownloadMd" class="px-3.5 py-2 bg-[#010e06] hover:bg-[#032612] text-[#caead5] hover:text-[#00ff66] text-xs font-bold border border-[#0a3a1f] transition-colors cursor-pointer">
+                    Download Markdown
+                </button>
+                <button id="btnDownloadJson" class="px-3.5 py-2 bg-[#010e06] hover:bg-[#032612] text-[#caead5] hover:text-[#00ff66] text-xs font-bold border border-[#0a3a1f] transition-colors cursor-pointer">
+                    Download JSON
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- BOTTOM RETRO INSTRUMENT STATUS TAPE -->
+    <footer class="mt-6 border-t border-[#0a3a1f] bg-[#010e06] text-[10px] font-mono text-[#849581] py-2 px-6 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <span class="text-[#00ff66] font-bold">CRT PHOSPHOR PERSISTENCE LAB // SIH26147 PLATFORM</span>
+            <span class="text-[#0e4b25]">|</span>
+            <span id="footer-cal-date">CALIBRATION: 2026.09.27-MIL</span>
         </div>
-      </div>
-    </section>
-
-
-    <!-- ========================================================================
-         STEP 5: AUTHORITATIVE REPORT GENERATION BAR
-         ======================================================================== -->
-    <section class="report-card">
-      <div class="report-info">
-        <h3><span>📋</span> Authoritative Engineering Audit Report</h3>
-        <p>Generated directly by the backend report generator with full parameter traceability and cross-validation checksums.</p>
-      </div>
-      <div class="report-btn-group">
-        <button id="btnViewHtmlReport" class="btn-report primary">
-          <span>👁️</span> View HTML Report
-        </button>
-        <button id="btnDownloadHtml" class="btn-report">Download HTML</button>
-        <button id="btnDownloadMd" class="btn-report">Download Markdown</button>
-        <button id="btnDownloadJson" class="btn-report">Download JSON</button>
-      </div>
-    </section>
-
-    <!-- Stage Telemetry & Deep Inspector Modal -->
-    <div id="stageInspectorModal" class="inspector-modal" style="display: none;">
-      <div class="inspector-backdrop" id="inspectorBackdrop"></div>
-      <div class="inspector-dialog">
-        <div class="inspector-header">
-          <div class="inspector-title-group">
-            <span class="inspector-badge" id="inspStageBadge">STAGE 01</span>
-            <h3 id="inspStageTitle">Canonical IQ Representation &amp; Validation</h3>
-          </div>
-          <button class="inspector-close" id="btnInspClose" title="Close Inspector">&times;</button>
+        <div class="flex items-center gap-3">
+            <span>SYSTEM NOISE: <span id="footer-noise-floor" class="text-[#00ff66]">-112 dBm</span></span>
+            <span class="text-[#0e4b25]">•</span>
+            <span>PLL LOCK: <span id="footer-pll-status" class="text-[#00ff66]">COHERENT</span></span>
         </div>
-        <div class="inspector-body">
-          <div class="inspector-meta-row">
-            <div><b>Locked Status:</b> <span class="inst-sub-green" id="inspStatus">LOCKED</span></div>
-            <div><b>Target Endpoint:</b> <code id="inspEndpoint">/api/module1/validate</code></div>
-          </div>
-          <p class="inspector-desc" id="inspDesc">Validates raw I/Q samples, enforces non-destructive complex representations, and strips DC offsets.</p>
-          
-          <div class="inspector-actions">
-            <button id="btnRunStageSolo" class="btn-solo-run">
-              <span>▶</span> Execute Stage Solo
+    </footer>
+
+                <!-- FLOATING DAW STUDIO MIXER CHANNEL STRIP (EXACT MATCH TO USER REFERENCE IMAGE 1) -->
+    <div     <!-- FLOATING RF GAIN SLIDER & LIGHT/DARK TOGGLE (SIMPLIFIED & PHOSPHOR THEMED) -->
+    <div id="rf-gain-panel" class="fader-plate" style="
+        position: fixed;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: #010e06;
+        border: 1px solid #00ff66;
+        border-right: none;
+        box-shadow: -4px 0 25px rgba(0, 255, 102, 0.22);
+        padding: 12px 10px 10px 10px;
+        gap: 8px;
+        font-family: 'JetBrains Mono', monospace;
+        width: 82px;
+        min-height: 380px;
+        cursor: default;
+        user-select: none;
+        backdrop-filter: blur(10px);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s, background 0.2s;
+    " title="Master RF Gain Attenuator">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-center gap-1 w-full text-[9px] font-bold text-[#00ff66] tracking-wider uppercase border-b border-[#0a3a1f] pb-1">
+            <span>🔊 RF GAIN</span>
+        </div>
+
+        <!-- Digital dB Readout -->
+        <div class="w-full text-center bg-[#02170b] border border-[#0a3a1f] py-1 px-0.5 rounded">
+            <span id="rf-gain-val" class="text-xs font-black text-[#00ff66] glow-phosphor-sm">+14.4 dB</span>
+        </div>
+
+        <!-- Vertical Slider Track Container -->
+        <div class="relative flex items-center justify-center gap-1.5 h-[210px] w-full my-1">
+            <!-- Left dB Scale Markings -->
+            <div class="flex flex-col justify-between h-[200px] text-[7.5px] font-mono text-[#849581] text-right pointer-events-none select-none">
+                <span class="text-[#ff4d4d] font-bold">+20</span>
+                <span>+10</span>
+                <span class="text-[#00ff66] font-bold">0</span>
+                <span>-10</span>
+                <span>-20</span>
+                <span class="text-[#0044ff] font-bold">-40</span>
+            </div>
+
+            <!-- Custom Styled Vertical Range Slider (GUARANTEED NO BLUE!) -->
+            <div class="relative flex items-center justify-center h-[200px] w-6">
+                <!-- Glowing Green Center Track -->
+                <div class="absolute left-1/2 -translate-x-1/2 w-1.5 h-[190px] bg-[#000000] border border-[#00ff66]/40 rounded-full pointer-events-none">
+                    <div id="rf-track-fill" class="w-full bg-[#00ff66] rounded-full shadow-[0_0_6px_#00ff66]" style="height: 72%; position: absolute; bottom: 0;"></div>
+                </div>
+
+                <input
+                    id="rf-gain-slider"
+                    type="range"
+                    orient="vertical"
+                    min="0" max="100" value="72"
+                    step="1"
+                    style="
+                        writing-mode: vertical-lr;
+                        appearance: none;
+                        -webkit-appearance: none;
+                        width: 28px;
+                        height: 195px;
+                        cursor: ns-resize;
+                        accent-color: #00ff66 !important;
+                        background: transparent;
+                        z-index: 25;
+                        outline: none;
+                    "
+                    title="Drag to adjust RF Gain (+20dB to -40dB)"
+                />
+            </div>
+
+            <!-- Single Slim LED Power Meter Bar -->
+            <div class="w-2.5 h-[190px] bg-[#010e06] border border-[#0a3a1f] relative overflow-hidden rounded-sm" title="Real-time RF Level">
+                <div id="vu-led-i" class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#00ff66] via-[#ffd700] to-[#ff2222] transition-all duration-75 shadow-[0_0_6px_#00ff66]" style="height: 68%;"></div>
+                <div id="vu-peak-i" class="absolute left-0 right-0 h-0.5 bg-[#ffffff] shadow-[0_0_4px_#ffffff]" style="bottom: 74%;"></div>
+            </div>
+        </div>
+
+        <!-- Level Indicator Tag -->
+        <div class="text-[8px] font-mono text-[#849581] uppercase tracking-wider text-center">
+            <span>ATTEN: <b id="rf-atten-db" class="text-[#00ff66]">-5.6dB</b></span>
+        </div>
+
+        <!-- LIGHT / DARK MODE TOGGLE (Directly under the slider) -->
+        <div class="w-full pt-2 border-t border-[#0a3a1f] flex flex-col items-center">
+            <button id="themeToggleBtn" class="w-full py-1.5 px-1 bg-[#02170b] hover:bg-[#032612] border border-[#00ff66]/60 text-[#00ff66] text-[9px] font-bold tracking-wider uppercase transition-all flex items-center justify-center gap-1 cursor-pointer shadow-[0_0_8px_rgba(0,255,102,0.15)]" title="Toggle Light/Dark Theme">
+                <span id="themeToggleIcon">☀</span>
+                <span id="themeToggleLabel">LIGHT</span>
             </button>
-            <button id="btnToggleInspJson" class="btn-toggle-json">
-              <span>{ }</span> Toggle Raw Backend JSON
-            </button>
-            <span id="inspSoloStatus" style="font-size:11px; color:var(--text-muted); align-self:center;"></span>
-          </div>
-
-          <div class="inspector-metrics-grid" id="inspMetricsGrid">
-            <!-- Dynamic metric cards injected here -->
-          </div>
-
-          <div class="inspector-json-wrapper" id="inspJsonWrapper" style="display: none;">
-            <div class="json-header">
-              <span>Backend REST Response Payload</span>
-              <button id="btnCopyInspJson" class="btn-copy-json">Copy JSON</button>
-            </div>
-            <pre id="inspJsonPre" class="inspector-json-pre">// Run pipeline or execute stage solo to view response payload</pre>
-          </div>
         </div>
-      </div>
+
+        <!-- Collapse toggle tab on left edge -->
+        <div id="rf-gain-collapse-btn" title="Toggle RF Gain Panel" style="
+            position: absolute;
+            left: -22px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 22px;
+            height: 58px;
+            background: #010e06;
+            border: 1px solid #00ff66;
+            border-right: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #00ff66;
+            font-size: 10px;
+            font-weight: bold;
+            box-shadow: -4px 0 12px rgba(0,255,102,0.22);
+            gap: 2px;
+        ">
+            <span id="rf-collapse-arrow">◀</span>
+            <span style="font-size: 7px; writing-mode: vertical-rl; transform: rotate(180deg); color: #849581; letter-spacing: 1px;">GAIN</span>
+        </div>
     </div>
 
-  </div>
-
-  <script src="/static/app.js"></script>
+    <script src="./app.js"></script>
+    <script>
+      // Fallback if relative path doesn't load
+      if (typeof window.__RADAR_APP_LOADED__ === 'undefined') {
+        var fb = document.createElement('script');
+        fb.src = '/experimental/app.js';
+        document.body.appendChild(fb);
+      }
+    </script>
 </body>
 </html>
