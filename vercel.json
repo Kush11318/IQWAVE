@@ -1,9 +1,43 @@
 {
   "version": 2,
+  "functions": {
+    "api/index.py": {
+      "includeFiles": "{frontend/**,Frontend-Experimental/**,public/**}",
+      "maxDuration": 60
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
       "destination": "/api/index.py"
+    },
+    {
+      "source": "/experimental",
+      "destination": "/experimental/index.html"
+    },
+    {
+      "source": "/experimental/",
+      "destination": "/experimental/index.html"
+    },
+    {
+      "source": "/exp",
+      "destination": "/experimental/index.html"
+    },
+    {
+      "source": "/radar",
+      "destination": "/experimental/index.html"
+    },
+    {
+      "source": "/radar-labview",
+      "destination": "/experimental/index.html"
+    },
+    {
+      "source": "/Frontend-Experimental",
+      "destination": "/experimental/index.html"
+    },
+    {
+      "source": "/Frontend-Experimental/(.*)",
+      "destination": "/experimental/$1"
     }
   ]
 }

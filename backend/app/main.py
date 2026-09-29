@@ -92,18 +92,22 @@ if os.path.exists(frontend_dir):
     def serve_frontend_index():
         return FileResponse(os.path.join(frontend_dir, "index.html"))
 
-# Mount Frontend-Experimental static directory if exists
-experimental_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "Frontend-Experimental")
-if not os.path.exists(experimental_dir):
-    candidate = os.path.join(os.getcwd(), "Frontend-Experimental")
-    if os.path.exists(candidate):
-        experimental_dir = candidate
+# Mount Frontend-Experimental / Radar LabView static directory if exists
+candidates = [
+    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "Frontend-Experimental"),
+    os.path.join(os.getcwd(), "Frontend-Experimental"),
+    os.path.join(os.getcwd(), "public", "experimental"),
+    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "public", "experimental"),
+]
+experimental_dir = next((c for c in candidates if os.path.exists(c)), None)
 
-if os.path.exists(experimental_dir):
+if experimental_dir:
     app.mount("/experimental", StaticFiles(directory=experimental_dir, html=True), name="experimental")
 
     @app.get("/exp")
     @app.get("/experimental")
+    @app.get("/radar")
+    @app.get("/radar-labview")
     def serve_experimental_index():
         return FileResponse(os.path.join(experimental_dir, "index.html"))
 
