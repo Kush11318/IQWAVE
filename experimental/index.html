@@ -884,7 +884,8 @@
                     </div>
                 </div>
 
-                <div class="w-full flex justify-between font-mono text-[10px] text-[#849581] z-20 pt-1 px-8 select-none pointer-events-none pb-1 bg-[#010e06]/70">
+                <!-- X-Axis Frequency Scale: Pinned firmly to the footer of the graph, dynamically adjusted on zoom & pan -->
+                <div class="absolute bottom-0 left-0 right-0 w-full flex justify-between items-center font-mono text-[10px] text-[#849581] z-20 px-4 sm:px-8 select-none pointer-events-none h-7 bg-[#010e06]/95 border-t border-[#0a3a1f]">
                     <span id="freqTick1">132.850 MHz</span>
                     <span id="freqTick2">136.183 MHz</span>
                     <span id="freqTick3">139.516 MHz</span>
@@ -1500,6 +1501,6 @@
         </div>
     </div>
 
-    <script src="/app.js?v=2.5.4"></script>
+    <script src="/app.js?v=2.5.5"></script>
 </body>
 </html>

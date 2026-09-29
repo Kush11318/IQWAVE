@@ -1727,6 +1727,36 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    function updateDynamicPsdTicks(fc, fs, zoom, pan, w) {
+        const fcMhz = fc / 1e6, fsMhz = fs / 1e6;
+        const offsetX = -pan * (w * zoom) - (zoom - 1) * (w / 2);
+
+        const calcFreqAtX = (screenX) => {
+            const frac = (screenX - offsetX) / (w * zoom);
+            return fcMhz - fsMhz / 2 + frac * fsMhz;
+        };
+
+        const chip = $("psdSpanChip");
+        if (chip) {
+            const visibleSpan = fsMhz / zoom;
+            chip.textContent = "SPAN: " + visibleSpan.toFixed(2) + " MHz" + (zoom > 1.01 ? " (" + zoom.toFixed(1) + "x)" : "");
+        }
+
+        const tCenter = $("freqTickCenter");
+        const freqCenter = calcFreqAtX(w / 2);
+        if (tCenter) tCenter.textContent = "Fc: " + freqCenter.toFixed(3) + " MHz (CENTER)";
+
+        const t1 = $("freqTick1"), t2 = $("freqTick2"), t3 = $("freqTick3"),
+              t5 = $("freqTick5"), t6 = $("freqTick6"), t7 = $("freqTick7");
+
+        if (t1) t1.textContent = calcFreqAtX(w * 0.05).toFixed(3) + " MHz";
+        if (t2) t2.textContent = calcFreqAtX(w * 0.20).toFixed(3) + " MHz";
+        if (t3) t3.textContent = calcFreqAtX(w * 0.35).toFixed(3) + " MHz";
+        if (t5) t5.textContent = calcFreqAtX(w * 0.65).toFixed(3) + " MHz";
+        if (t6) t6.textContent = calcFreqAtX(w * 0.80).toFixed(3) + " MHz";
+        if (t7) t7.textContent = calcFreqAtX(w * 0.95).toFixed(3) + " MHz";
+    }
+
     // ---- PSD SPECTRUM CANVAS (2D: 0 dB IS AT BOTTOM, ZOOM, PAN, BIN INSPECTION) ----
     function drawPsd2D() {
         if (!canvasPsd) return;
@@ -1734,9 +1764,12 @@ document.addEventListener("DOMContentLoaded", () => {
               w = canvasPsd.width, h = canvasPsd.height, dpr = devicePixelRatio;
         ctx.clearRect(0, 0, w, h);
 
-        // USER REQUIREMENT: 0 dB IS AT THE BOTTOM (BASELINE), 100 dB AT TOP
+        // USER REQUIREMENT: 0 dB IS ANCHORED AT FOOTER (BASELINE), 100 dB AT TOP
         const minDb = 0, maxDb = 100;
-        const dbToY = db => h - (db / 100) * (h - 32 * dpr) - 16 * dpr;
+        const footerH = 28 * dpr;
+        const topMargin = 22 * dpr;
+        const graphH = h - footerH - topMargin;
+        const dbToY = db => h - footerH - (db / 100) * graphH;
 
         // dB Grid Lines
         const ticks = [100, 80, 60, 40, 20, 0];
@@ -1744,7 +1777,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ctx.font = 9 * dpr + "px JetBrains Mono";
         ticks.forEach(t => {
             const y = dbToY(t);
-            ctx.strokeStyle = t === 0 ? (state.isLightTheme ? "#008a38" : "rgba(0, 255, 102, 0.5)") : (state.isLightTheme ? "#a2cca9" : "#0a3a1f");
+            ctx.strokeStyle = t === 0 ? (state.isLightTheme ? "#008a38" : "rgba(0, 255, 102, 0.6)") : (state.isLightTheme ? "#a2cca9" : "#0a3a1f");
             ctx.lineWidth = t === 0 ? 1.5 * dpr : 1 * dpr;
             ctx.setLineDash(t === 0 ? [] : [2 * dpr, 4 * dpr]);
             ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
@@ -1757,7 +1790,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ctx.strokeStyle = "rgba(0, 255, 102, 0.35)";
         ctx.lineWidth = 1 * dpr;
         ctx.setLineDash([3 * dpr, 3 * dpr]);
-        ctx.beginPath(); ctx.moveTo(w / 2, 0); ctx.lineTo(w / 2, h); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(w / 2, topMargin); ctx.lineTo(w / 2, h - footerH); ctx.stroke();
         ctx.setLineDash([]);
 
         if (!frozenPsdData && currentSignal.i && currentSignal.i.length > 0) {
@@ -1790,8 +1823,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 coords.push({ x, y: dbToY(db), db, i });
             }
 
-            // Fill area from bottom (y = h) upwards to curve
-            const thermal = ctx.createLinearGradient(0, dbToY(100), 0, h);
+            // Fill area from bottom (y = h - footerH) upwards to curve
+            const thermal = ctx.createLinearGradient(0, topMargin, 0, h - footerH);
             thermal.addColorStop(0.0, "rgba(255, 34, 34, 0.95)");
             thermal.addColorStop(0.2, "rgba(255, 136, 0, 0.85)");
             thermal.addColorStop(0.4, "rgba(255, 215, 0, 0.80)");
@@ -1800,9 +1833,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
             ctx.fillStyle = thermal;
             ctx.beginPath();
-            ctx.moveTo(0, h);
+            ctx.moveTo(0, h - footerH);
             coords.forEach(c => ctx.lineTo(c.x, c.y));
-            ctx.lineTo(w, h);
+            ctx.lineTo(w, h - footerH);
             ctx.closePath();
             ctx.fill();
 
@@ -1815,6 +1848,9 @@ document.addEventListener("DOMContentLoaded", () => {
             coords.forEach((c, i) => i === 0 ? ctx.moveTo(c.x, c.y) : ctx.lineTo(c.x, c.y));
             ctx.stroke();
             ctx.shadowBlur = 0;
+
+            // Dynamically synchronize the footer X-axis frequency markings with current zoom & pan
+            updateDynamicPsdTicks(fc, fs, zoom, pan, w);
 
             // Nearest Bin Snap & Hover Tooltip
             if (state.psdHover) {
