@@ -325,6 +325,79 @@ async def post_upload_pipeline(
                 "module_statuses": {"module1": "FAILED"},
                 "pipeline_warnings": ["INVALID_JSON_SIGNAL_FORMAT"]
             }
+    elif ext in [".iq", ".bin", ".dat"]:
+        try:
+            import numpy as np
+            n_bytes = len(content)
+            if n_bytes % 8 == 0:
+                raw_f32 = np.frombuffer(content, dtype=np.float32)
+                if not np.any(np.isnan(raw_f32)) and np.max(np.abs(raw_f32)) < 100.0:
+                    i_samples = raw_f32[0::2]
+                    q_samples = raw_f32[1::2]
+                else:
+                    raw_i16 = np.frombuffer(content, dtype=np.int16).astype(np.float32) / 32768.0
+                    i_samples = raw_i16[0::2]
+                    q_samples = raw_i16[1::2]
+            elif n_bytes % 4 == 0:
+                raw_i16 = np.frombuffer(content, dtype=np.int16).astype(np.float32) / 32768.0
+                i_samples = raw_i16[0::2]
+                q_samples = raw_i16[1::2]
+            else:
+                raw_i8 = np.frombuffer(content, dtype=np.int8).astype(np.float32) / 128.0
+                i_samples = raw_i8[0::2]
+                q_samples = raw_i8[1::2]
+
+            return default_pipeline_orchestrator.run_pipeline(
+                i_channel=i_samples,
+                q_channel=q_samples,
+                sample_rate=sample_rate or 20000000.0,
+                center_frequency=center_frequency or 142850000.0,
+                override_modulation=override_modulation,
+                input_type=f"UPLOADED_BINARY_IQ_{ext.upper().replace('.', '')}",
+                metadata={"filename": filename}
+            )
+        except Exception as e:
+            return {
+                "status": "RAW_IQ_PARSE_ERROR",
+                "pipeline_success": False,
+                "message": f"Failed to parse binary IQ stream: {str(e)}",
+                "module_statuses": {"module1": "FAILED"},
+                "pipeline_warnings": ["INVALID_BINARY_IQ_FORMAT"]
+            }
+    elif ext == ".wav":
+        try:
+            import io
+            import numpy as np
+            import scipy.io.wavfile as wavfile
+            sr, wav_data = wavfile.read(io.BytesIO(content))
+            if wav_data.ndim > 1:
+                i_samples = wav_data[:, 0].astype(np.float32)
+                q_samples = wav_data[:, 1].astype(np.float32)
+            else:
+                i_samples = wav_data.astype(np.float32)
+                q_samples = np.zeros_like(i_samples)
+            max_v = max(float(np.max(np.abs(i_samples))), float(np.max(np.abs(q_samples))))
+            if max_v > 1.0:
+                i_samples = i_samples / max_v
+                q_samples = q_samples / max_v
+
+            return default_pipeline_orchestrator.run_pipeline(
+                i_channel=i_samples,
+                q_channel=q_samples,
+                sample_rate=float(sample_rate or sr),
+                center_frequency=center_frequency or 142850000.0,
+                override_modulation=override_modulation,
+                input_type="UPLOADED_WAV_FILE",
+                metadata={"filename": filename}
+            )
+        except Exception as e:
+            return {
+                "status": "WAV_PARSE_ERROR",
+                "pipeline_success": False,
+                "message": f"Failed to parse WAV audio stream: {str(e)}",
+                "module_statuses": {"module1": "FAILED"},
+                "pipeline_warnings": ["INVALID_WAV_FORMAT"]
+            }
     else:
         # Ingest through Module 1 file parser preserving 1B/1C research boundary
         from backend.modules.module1.service import process_file_input
