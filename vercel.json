@@ -6,6 +6,22 @@
       "destination": "/api/index.py"
     },
     {
+      "source": "/favicon.ico",
+      "destination": "/favicon.ico"
+    },
+    {
+      "source": "/favicon.svg",
+      "destination": "/favicon.svg"
+    },
+    {
+      "source": "/experimental/(.*)",
+      "destination": "/$1"
+    },
+    {
+      "source": "/Frontend-Experimental/(.*)",
+      "destination": "/$1"
+    },
+    {
       "source": "/experimental",
       "destination": "/index.html"
     },
@@ -28,10 +44,6 @@
     {
       "source": "/Frontend-Experimental",
       "destination": "/index.html"
-    },
-    {
-      "source": "/Frontend-Experimental/(.*)",
-      "destination": "/$1"
     }
   ]
 }

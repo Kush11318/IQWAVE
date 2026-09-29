@@ -119,4 +119,21 @@ if experimental_dir:
 
 @app.get("/favicon.ico")
 def favicon():
+    ico_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "favicon.ico")
+    if os.path.exists(ico_path):
+        return FileResponse(ico_path, media_type="image/x-icon")
+    candidate = os.path.join(os.getcwd(), "favicon.ico")
+    if os.path.exists(candidate):
+        return FileResponse(candidate, media_type="image/x-icon")
     return Response(status_code=204)
+
+@app.get("/favicon.svg")
+def favicon_svg():
+    svg_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "favicon.svg")
+    if os.path.exists(svg_path):
+        return FileResponse(svg_path, media_type="image/svg+xml")
+    candidate = os.path.join(os.getcwd(), "favicon.svg")
+    if os.path.exists(candidate):
+        return FileResponse(candidate, media_type="image/svg+xml")
+    return Response(status_code=204)
+

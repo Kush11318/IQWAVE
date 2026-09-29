@@ -345,7 +345,24 @@ document.addEventListener("DOMContentLoaded", () => {
                 const buffer = await file.arrayBuffer();
                 const byteLen = buffer.byteLength;
                 let iSa = [], qSa = [];
+
+                let isFloat32 = false;
                 if (byteLen >= 8 && byteLen % 8 === 0) {
+                    const testF32 = new Float32Array(buffer);
+                    let validF32 = true;
+                    let maxAbs = 0;
+                    const checkLen = Math.min(testF32.length, 128);
+                    for (let c = 0; c < checkLen; c++) {
+                        const v = Math.abs(testF32[c]);
+                        if (isNaN(v) || !isFinite(v)) { validF32 = false; break; }
+                        if (v > maxAbs) maxAbs = v;
+                    }
+                    if (validF32 && maxAbs > 1e-6 && maxAbs < 1000.0) {
+                        isFloat32 = true;
+                    }
+                }
+
+                if (isFloat32) {
                     const f32 = new Float32Array(buffer);
                     const nPairs = Math.min(Math.floor(f32.length / 2), 4800);
                     for (let k = 0; k < nPairs; k++) {
@@ -359,8 +376,15 @@ document.addEventListener("DOMContentLoaded", () => {
                         iSa.push(i16[2 * k] / 32768.0);
                         qSa.push(i16[2 * k + 1] / 32768.0);
                     }
+                } else if (byteLen >= 2) {
+                    const i8 = new Int8Array(buffer);
+                    const nPairs = Math.min(Math.floor(i8.length / 2), 4800);
+                    for (let k = 0; k < nPairs; k++) {
+                        iSa.push(i8[2 * k] / 128.0);
+                        qSa.push(i8[2 * k + 1] / 128.0);
+                    }
                 } else {
-                    throw new Error("Binary IQ length must be divisible by 4 (int16) or 8 (float32)");
+                    throw new Error("Binary IQ length must be at least 2 bytes");
                 }
                 currentSignal = {
                     i: iSa,
